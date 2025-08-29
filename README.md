@@ -46,8 +46,15 @@ dotnet restore Proyecto/Proyecto.sln
 
 #### Configurar Variables de Entorno
 
-El proyecto utiliza variables de entorno para la cadena de conexión a la base de datos. Configura las siguientes variables:
+El proyecto utiliza variables de entorno para la cadena de conexión a la base de datos. Puedes configurar la variable de entorno `db` en un archivo `.env` en el directorio del proyecto:
 
+**Opción 1: Archivo .env**
+```bash
+# Crear archivo .env en el directorio raíz del proyecto
+db=Server=localhost;Database=proyecto_QA;Uid=tu_usuario;Pwd=tu_password;
+```
+
+**Opción 2: Variables de entorno del sistema**
 ```bash
 # Linux/macOS
 export ConnectionStrings__DefaultConnection="Server=localhost;Database=proyecto_QA;Uid=tu_usuario;Pwd=tu_password;"
@@ -149,10 +156,3 @@ El sistema utiliza autenticación basada en cookies con:
 2. **Problemas de compilación**: Ejecutar `dotnet restore` y `dotnet clean` seguido de `dotnet build`
 3. **Errores de migración**: Verificar que la base de datos existe y el usuario tiene permisos
 
-## Contribución
-
-1. Fork el proyecto
-2. Crear una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit tus cambios (`git commit -am 'Agregar nueva funcionalidad'`)
-4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
-5. Crear un Pull Request
