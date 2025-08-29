@@ -44,26 +44,19 @@ dotnet restore Proyecto/Proyecto.sln
 
 ### 3. Configurar Base de Datos
 
-#### Actualizar Cadenas de Conexión
+#### Configurar Variables de Entorno
 
-**⚠️ IMPORTANTE**: Actualiza las cadenas de conexión hardcodeadas en:
-
-- `BD/Data/ProyectoContext.cs:47`
-- `Proyecto/Program.cs:27`
-
-Cambia los valores por tu configuración de MySQL:
-
-```csharp
-// Ejemplo de cadena de conexión
-"Server=localhost;Database=proyecto_QA;Uid=tu_usuario;Pwd=tu_password;"
-```
-
-#### Aplicar Migraciones
+El proyecto utiliza variables de entorno para la cadena de conexión a la base de datos. Configura las siguientes variables:
 
 ```bash
-cd BD
-dotnet ef migrations add InitialCreate
-dotnet ef database update
+# Linux/macOS
+export ConnectionStrings__DefaultConnection="Server=localhost;Database=proyecto_QA;Uid=tu_usuario;Pwd=tu_password;"
+
+# Windows (PowerShell)
+$env:ConnectionStrings__DefaultConnection="Server=localhost;Database=proyecto_QA;Uid=tu_usuario;Pwd=tu_password;"
+
+# Windows (CMD)
+set ConnectionStrings__DefaultConnection=Server=localhost;Database=proyecto_QA;Uid=tu_usuario;Pwd=tu_password;
 ```
 
 ### 4. Compilar la Solución
@@ -115,20 +108,6 @@ proyectoobed/
 
 ## Comandos de Desarrollo
 
-### Entity Framework
-
-```bash
-# Agregar nueva migración
-cd BD
-dotnet ef migrations add <NombreMigracion>
-
-# Aplicar migraciones
-dotnet ef database update
-
-# Revertir migración
-dotnet ef database update <MigracionAnterior>
-```
-
 ### Compilación y Ejecución
 
 ```bash
@@ -160,7 +139,7 @@ El sistema utiliza autenticación basada en cookies con:
 
 ## Notas Importantes
 
-- **Seguridad**: Las credenciales de la base de datos están hardcodeadas y deben moverse a configuración
+- **Seguridad**: Las credenciales de la base de datos se configuran mediante variables de entorno
 - **Naming**: Algunos nombres de interfaces contienen errores tipográficos
 - **Arquitectura**: Separación limpia con DTOs, servicios y capa de datos
 
