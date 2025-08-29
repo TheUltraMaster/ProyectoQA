@@ -1,0 +1,233 @@
+@using BD.Models
+@using Proyecto.DTOS
+@using Proyecto.Services
+@using MudBlazor
+@using System.ComponentModel.DataAnnotations
+@using System.Globalization
+@using System.Text
+@inject IAreaService AreaService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudContainer Style="max-width: 600px;">
+            <MudForm @ref="form" @bind-IsValid="@isFormValid">
+                <MudGrid>
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="model.Nombre"
+                                     Label="Nombre del Área"
+                                     Variant="Variant.Outlined"
+                                     Required="true"
+                                     RequiredError="El nombre del área es obligatorio"
+                                     MaxLength="50"
+                                     Counter="50"
+                                     Validation="@(new RegularExpressionAttribute(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$") { ErrorMessage = "El nombre solo puede contener letras y espacios" })"
+                                     For="@(() => model.Nombre)"
+                                     @onblur="OnNameChanged" />
+                        @if (!string.IsNullOrEmpty(normalizedNamePreview) && normalizedNamePreview != model.Nombre)
+                        {
+                            <MudText Typo="Typo.body2" Class="mt-2" Color="Color.Info">
+                                <MudIcon Icon="Icons.Material.Filled.Info" Size="Size.Small" Class="mr-1" />
+                                Se guardará como: <strong>@normalizedNamePreview</strong>
+                            </MudText>
+                        }
+                        @if (nameExistsError)
+                        {
+                            <MudText Typo="Typo.body2" Class="mt-2" Color="Color.Error">
+                                <MudIcon Icon="Icons.Material.Filled.Error" Size="Size.Small" Class="mr-1" />
+                                Ya existe un área con este nombre
+                            </MudText>
+                        }
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudSelect T="int?" @bind-Value="selectedUsuarioId"
+                                  Label="Usuario Responsable"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="Debe seleccionar un usuario responsable"
+                                  For="@(() => selectedUsuarioId)"
+                                  Validation="@(new Func<int?, IEnumerable<string>>(ValidateUsuarioSelection))">
+                            <MudSelectItem Value="@((int?)null)">-- Seleccionar Usuario --</MudSelectItem>
+                            @if (usuarios != null)
+                            {
+                                @foreach (var usuario in usuarios)
+                                {
+                                    <MudSelectItem Value="@((int?)usuario.Id)">@usuario.Usuario1</MudSelectItem>
+                                }
+                            }
+                        </MudSelect>
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudContainer>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@(!isFormValid || isSubmitting || nameExistsError)">
+            @if (isSubmitting)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                <MudText Class="ms-2">Procesando...</MudText>
+            }
+            else
+            {
+                @(IsEditMode ? "Actualizar" : "Crear")
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    
+    [Parameter] public bool IsEditMode { get; set; } = false;
+    [Parameter] public Area? Area { get; set; }
+    
+    private MudForm form = null!;
+    private bool isFormValid;
+    private bool isSubmitting;
+    private AreaDto model = new();
+    private List<Usuario>? usuarios;
+    private string normalizedNamePreview = string.Empty;
+    private bool nameExistsError = false;
+    private int? selectedUsuarioId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsuarios();
+        
+        if (IsEditMode && Area != null)
+        {
+            model = new AreaDto
+            {
+                Id = Area.Id,
+                Nombre = Area.Nombre,
+                IdUsuario = Area.IdUsuario
+            };
+            selectedUsuarioId = Area.IdUsuario;
+        }
+    }
+
+    private async Task LoadUsuarios()
+    {
+        try
+        {
+            usuarios = await AreaService.GetUsuariosAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar usuarios: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Submit()
+    {
+        if (!isFormValid) return;
+        
+        // Assign the selected user ID to the model
+        if (selectedUsuarioId.HasValue)
+        {
+            model.IdUsuario = selectedUsuarioId.Value;
+        }
+        else
+        {
+            Snackbar.Add("Debe seleccionar un usuario responsable", Severity.Error);
+            return;
+        }
+
+        isSubmitting = true;
+        try
+        {
+            if (IsEditMode && Area != null)
+            {
+                var result = await AreaService.UpdateAreaAsync(Area.Id, model);
+                if (result != null)
+                {
+                    Snackbar.Add("Área actualizada correctamente", Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(result));
+                }
+                else
+                {
+                    Snackbar.Add("No se pudo actualizar el área", Severity.Error);
+                }
+            }
+            else
+            {
+                var result = await AreaService.CreateAreaAsync(model);
+                Snackbar.Add("Área creada correctamente", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(result));
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al {(IsEditMode ? "actualizar" : "crear")} área: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task OnNameChanged()
+    {
+        if (string.IsNullOrWhiteSpace(model.Nombre))
+        {
+            normalizedNamePreview = string.Empty;
+            nameExistsError = false;
+            return;
+        }
+
+        normalizedNamePreview = NormalizeAreaName(model.Nombre);
+        
+        // Check if name exists
+        try
+        {
+            var excludeId = IsEditMode && Area != null ? Area.Id : (int?)null;
+            nameExistsError = await AreaService.AreaNameExistsAsync(normalizedNamePreview, excludeId);
+        }
+        catch
+        {
+            nameExistsError = false;
+        }
+        
+        StateHasChanged();
+    }
+
+    private static string NormalizeAreaName(string nombre)
+    {
+        if (string.IsNullOrEmpty(nombre))
+            return string.Empty;
+
+        // Convert to uppercase
+        var normalized = nombre.ToUpperInvariant();
+        
+        // Remove accents
+        var stringBuilder = new StringBuilder();
+        var normalizedString = normalized.Normalize(NormalizationForm.FormD);
+        
+        foreach (var c in normalizedString)
+        {
+            var unicodeCategory = CharUnicodeInfo.GetUnicodeCategory(c);
+            if (unicodeCategory != UnicodeCategory.NonSpacingMark)
+            {
+                stringBuilder.Append(c);
+            }
+        }
+        
+        return stringBuilder.ToString().Normalize(NormalizationForm.FormC);
+    }
+
+    private IEnumerable<string> ValidateUsuarioSelection(int? value)
+    {
+        if (!value.HasValue)
+        {
+            yield return "Debe seleccionar un usuario responsable";
+        }
+    }
+}

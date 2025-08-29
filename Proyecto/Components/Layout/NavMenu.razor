@@ -1,0 +1,40 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@inject HttpClient HttpClient
+@inject NavigationManager Navigation
+
+<AuthorizeView>
+    <Authorized>
+        <MudNavMenu>
+            <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Inicio</MudNavLink>
+            
+            <MudNavGroup Text="Administración" Icon="@Icons.Material.Filled.Settings" Expanded="false">
+                <MudNavLink Href="/usuarios" Icon="@Icons.Material.Filled.People">Usuarios</MudNavLink>
+                <MudNavLink Href="/empleados" Icon="@Icons.Material.Filled.Badge">Empleados</MudNavLink>
+                <MudNavLink Href="/areas" Icon="@Icons.Material.Filled.BusinessCenter">Áreas</MudNavLink>
+            </MudNavGroup>
+            
+            <MudDivider />
+            
+            <MudNavGroup Text="Usuario" Icon="@Icons.Material.Filled.Person" Expanded="false">
+                <MudNavLink Icon="@Icons.Material.Filled.AccountCircle">
+                    @context.User.Identity?.Name
+                </MudNavLink>
+                <div class="nav-item px-3">
+                    <form method="post" action="/api/auth/logout">
+                        <button type="submit" class="nav-link btn btn-link text-start">
+                            <span class="bi bi-box-arrow-right" aria-hidden="true"></span> Logout
+                        </button>
+                    </form>
+                </div>
+            </MudNavGroup>
+        </MudNavMenu>
+    </Authorized>
+    <NotAuthorized>
+        <MudNavMenu>
+            <MudNavLink Href="/login" Icon="@Icons.Material.Filled.Login">Iniciar Sesión</MudNavLink>
+        </MudNavMenu>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+}

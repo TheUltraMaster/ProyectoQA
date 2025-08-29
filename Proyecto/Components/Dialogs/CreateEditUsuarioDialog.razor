@@ -1,0 +1,233 @@
+@using BD.Models
+@using Proyecto.DTOS
+@using Proyecto.Services
+@using MudBlazor
+@using System.ComponentModel.DataAnnotations
+@inject IUsuarioService UsuarioService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudContainer Style="max-width: 600px;">
+            <MudForm @ref="form" @bind-IsValid="@isFormValid">
+                <MudGrid>
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="model.Usuario"
+                                     Label="Correo Electrónico"
+                                     Variant="Variant.Outlined"
+                                     Required="true"
+                                     RequiredError="El correo electrónico es obligatorio"
+                                     Validation="@(new EmailAddressAttribute() { ErrorMessage = "Debe ser un email válido" })"
+                                     For="@(() => model.Usuario)" />
+                    </MudItem>
+
+                    @if (!IsEditMode)
+                    {
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="model.Password"
+                                         Label="Contraseña"
+                                         Variant="Variant.Outlined"
+                                         Required="true"
+                                         RequiredError="La contraseña es obligatoria"
+                                         InputType="InputType.Password"
+                                         For="@(() => model.Password)" />
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="confirmPassword"
+                                         Label="Confirmar Contraseña"
+                                         Variant="Variant.Outlined"
+                                         Required="true"
+                                         RequiredError="Confirme la contraseña"
+                                         InputType="InputType.Password"
+                                         Validation="@(new Func<string, IEnumerable<string>>(ValidateConfirmPassword))"
+                                         For="@(() => confirmPassword)" />
+                        </MudItem>
+                    }
+
+                    <MudItem xs="12" sm="6">
+                        <MudSwitch @bind-Value="model.IsAdmin" 
+                                  Label="Administrador" 
+                                  Color="Color.Warning" />
+                    </MudItem>
+
+                    @if (IsEditMode)
+                    {
+                        <MudItem xs="12" sm="6">
+                            <MudSwitch @bind-Value="model.Activo" 
+                                      Label="Estado Activo" 
+                                      Color="Color.Success" />
+                        </MudItem>
+                        
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="model.Password"
+                                         Label="Nueva Contraseña (opcional)"
+                                         Variant="Variant.Outlined"
+                                         InputType="InputType.Password"
+                                         For="@(() => model.Password)" />
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="confirmPassword"
+                                         Label="Confirmar Nueva Contraseña"
+                                         Variant="Variant.Outlined"
+                                         InputType="InputType.Password"
+                                         Validation="@(new Func<string, IEnumerable<string>>(ValidateConfirmPasswordEdit))"
+                                         For="@(() => confirmPassword)" />
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudForm>
+        </MudContainer>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@(!isFormValid || isSubmitting)">
+            @if (isSubmitting)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                <MudText Class="ms-2">Procesando...</MudText>
+            }
+            else
+            {
+                @(IsEditMode ? "Actualizar" : "Crear")
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] 
+    IMudDialogInstance MudDialog { get; set; }
+
+    [Parameter] 
+    public bool IsEditMode { get; set; } = false;
+
+    [Parameter] 
+    public Usuario? Usuario { get; set; }
+
+    private MudForm form = default!;
+    private bool isFormValid;
+    private bool isSubmitting;
+    private List<Empleado> empleados = new();
+
+    private UsuarioDto model = new();
+    private string confirmPassword = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEmpleados();
+        
+        if (IsEditMode && Usuario != null)
+        {
+            model = new UsuarioDto
+            {
+                Id = Usuario.Id,
+                Usuario = Usuario.Usuario1,
+                Password = string.Empty, // No pre-cargar la contraseña por seguridad
+                IsAdmin = Usuario.IsAdmin,
+                Activo = Usuario.Activo == 1UL
+            };
+            confirmPassword = string.Empty;
+        }
+        else
+        {
+            model.Activo = true;
+        }
+    }
+
+    private async Task LoadEmpleados()
+    {
+        try
+        {
+            empleados = await UsuarioService.GetEmpleadosDisponiblesAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar empleados: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private IEnumerable<string> ValidateConfirmPassword(string confirmPasswordValue)
+    {
+        if (!IsEditMode && model.Password != confirmPasswordValue)
+        {
+            yield return "Las contraseñas no coinciden";
+        }
+    }
+
+    private IEnumerable<string> ValidateConfirmPasswordEdit(string confirmPasswordValue)
+    {
+        if (IsEditMode && !string.IsNullOrEmpty(model.Password) && model.Password != confirmPasswordValue)
+        {
+            yield return "Las contraseñas no coinciden";
+        }
+    }
+
+    void Cancel()
+    {
+        MudDialog?.Close();
+    }
+
+    private async Task Submit()
+    {
+        if (!isFormValid) return;
+
+        isSubmitting = true;
+        try
+        {
+            if (!IsEditMode && await UsuarioService.UsuarioExistsAsync(model.Usuario))
+            {
+                Snackbar.Add("El correo electrónico ya está en uso", Severity.Error);
+                return;
+            }
+
+            if (IsEditMode && Usuario != null)
+            {
+                if (await UsuarioService.UsuarioExistsAsync(model.Usuario, Usuario.Id))
+                {
+                    Snackbar.Add("El correo electrónico ya está en uso", Severity.Error);
+                    return;
+                }
+
+                var result = await UsuarioService.UpdateUsuarioAsync(Usuario.Id, model);
+                if (result != null)
+                {
+                    Snackbar.Clear();
+                    Snackbar.Add("Usuario actualizado exitosamente", Severity.Success);
+                    MudDialog?.Close(DialogResult.Ok(result));
+                }
+                else
+                {
+                    Snackbar.Clear();
+                    Snackbar.Add("Error al actualizar el usuario", Severity.Error);
+                }
+            }
+            else
+            {
+                var result = await UsuarioService.CreateUsuarioAsync(model);
+                if (result != null)
+                {
+                    Snackbar.Add("Usuario creado exitosamente", Severity.Success);
+                    MudDialog?.Close(DialogResult.Ok(result));
+                }
+                else
+                {
+                    Snackbar.Add("Error al crear el usuario", Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al procesar la solicitud: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+}
