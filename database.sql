@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS `area` (
   PRIMARY KEY (`id`),
   KEY `id_usuario` (`id_usuario`),
   CONSTRAINT `area_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=27 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- La exportación de datos fue deseleccionada.
 
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS `bitacoraEquipo` (
   KEY `idx_bitacora_equipo` (`id_equipo`),
   CONSTRAINT `bitacoraEquipo_ibfk_1` FOREIGN KEY (`id_empleado`) REFERENCES `empleado` (`id`),
   CONSTRAINT `bitacoraEquipo_ibfk_2` FOREIGN KEY (`id_equipo`) REFERENCES `equipo` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- La exportación de datos fue deseleccionada.
 
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS `causa` (
   `nombre` varchar(50) NOT NULL,
   `descripcion` varchar(300) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- La exportación de datos fue deseleccionada.
 
@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS `electronico` (
   PRIMARY KEY (`id`),
   KEY `id_equipo` (`id_equipo`),
   CONSTRAINT `electronico_ibfk_1` FOREIGN KEY (`id_equipo`) REFERENCES `equipo` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- La exportación de datos fue deseleccionada.
 
@@ -75,9 +75,9 @@ CREATE TABLE IF NOT EXISTS `electronico` (
 CREATE TABLE IF NOT EXISTS `empleado` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `primer_nombre` varchar(50) NOT NULL,
-  `segundo_nombre` varchar(50) NOT NULL,
+  `segundo_nombre` varchar(50) DEFAULT NULL,
   `primer_apellido` varchar(50) NOT NULL,
-  `segundo_apellido` varchar(50) NOT NULL,
+  `segundo_apellido` varchar(50) DEFAULT NULL,
   `id_usuario` int(11) DEFAULT NULL,
   `estado` enum('activo','inactivo','vacaciones') DEFAULT 'activo',
   `id_area` int(11) DEFAULT NULL,
@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS `empleado` (
   KEY `idx_empleado_area` (`id_area`),
   CONSTRAINT `empleado_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id`),
   CONSTRAINT `empleado_ibfk_2` FOREIGN KEY (`id_area`) REFERENCES `area` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- La exportación de datos fue deseleccionada.
 
@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS `equipo` (
   KEY `idx_equipo_tipo` (`tipo`),
   CONSTRAINT `equipo_ibfk_1` FOREIGN KEY (`id_marca`) REFERENCES `marca` (`id`),
   CONSTRAINT `equipo_ibfk_2` FOREIGN KEY (`id_empleado`) REFERENCES `empleado` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=20 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- La exportación de datos fue deseleccionada.
 
@@ -124,7 +124,7 @@ CREATE TABLE IF NOT EXISTS `herramienta` (
   PRIMARY KEY (`id`),
   KEY `id_equipo` (`id_equipo`),
   CONSTRAINT `herramienta_ibfk_1` FOREIGN KEY (`id_equipo`) REFERENCES `equipo` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- La exportación de datos fue deseleccionada.
 
@@ -136,7 +136,7 @@ CREATE TABLE IF NOT EXISTS `imagen` (
   PRIMARY KEY (`id`),
   KEY `id_reporte` (`id_reporte`),
   CONSTRAINT `imagen_ibfk_1` FOREIGN KEY (`id_reporte`) REFERENCES `reporte` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- La exportación de datos fue deseleccionada.
 
@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS `marca` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `nombre` varchar(50) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- La exportación de datos fue deseleccionada.
 
@@ -180,7 +180,7 @@ CREATE TABLE IF NOT EXISTS `reporte` (
   CONSTRAINT `reporte_ibfk_1` FOREIGN KEY (`id_causa`) REFERENCES `causa` (`id`),
   CONSTRAINT `reporte_ibfk_2` FOREIGN KEY (`id_equipo`) REFERENCES `equipo` (`id`),
   CONSTRAINT `reporte_ibfk_3` FOREIGN KEY (`id_empleado`) REFERENCES `empleado` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- La exportación de datos fue deseleccionada.
 
@@ -194,7 +194,7 @@ CREATE TABLE IF NOT EXISTS `usuario` (
   `activo` bit(1) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `usuario` (`usuario`)
-) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- La exportación de datos fue deseleccionada.
 
@@ -210,7 +210,7 @@ CREATE TABLE IF NOT EXISTS `vehiculo` (
   PRIMARY KEY (`id`),
   KEY `id_equipo` (`id_equipo`),
   CONSTRAINT `vehiculo_ibfk_1` FOREIGN KEY (`id_equipo`) REFERENCES `equipo` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- La exportación de datos fue deseleccionada.
 
@@ -245,6 +245,41 @@ BEGIN
         
         INSERT INTO bitacoraEquipo (id_empleado, id_equipo, fecha_commit) 
         VALUES (NEW.id_empleado, NEW.id, NOW());
+        
+    END IF;
+END//
+DELIMITER ;
+SET SQL_MODE=@OLDTMP_SQL_MODE;
+
+-- Volcando estructura para disparador proyecto_QA.tr_generar_identificador_equipo
+SET @OLDTMP_SQL_MODE=@@SQL_MODE, SQL_MODE='STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+DELIMITER //
+CREATE TRIGGER tr_generar_identificador_equipo
+    BEFORE INSERT ON equipo
+    FOR EACH ROW
+BEGIN
+    DECLARE siguiente_numero INT DEFAULT 1;
+    DECLARE abreviatura VARCHAR(3);
+    
+    -- Solo generar identificador si viene vacío o NULL
+    IF NEW.identificador IS NULL OR NEW.identificador = '' THEN
+        
+        -- Determinar la abreviatura según el tipo de equipo
+        CASE NEW.tipo
+            WHEN 'herramienta' THEN SET abreviatura = 'HER';
+            WHEN 'electronico' THEN SET abreviatura = 'ELE';
+            WHEN 'mobiliario' THEN SET abreviatura = 'MOB';
+            WHEN 'vehiculo' THEN SET abreviatura = 'VEH';
+            ELSE SET abreviatura = 'EQU'; -- Fallback por si hay un tipo no contemplado
+        END CASE;
+        
+        -- Obtener el siguiente número en secuencia para este tipo de equipo
+        SELECT IFNULL(COUNT(*), 0) + 1 INTO siguiente_numero
+        FROM equipo 
+        WHERE tipo = NEW.tipo;
+        
+        -- Generar el identificador con formato: ABREVIATURA + número con padding de 3 dígitos
+        SET NEW.identificador = CONCAT(abreviatura, LPAD(siguiente_numero, 3, '0'));
         
     END IF;
 END//
