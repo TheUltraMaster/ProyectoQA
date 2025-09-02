@@ -1,0 +1,449 @@
+@page "/equipos"
+@attribute [Authorize(Policy="AdminOnly")]
+@rendermode InteractiveServer
+@using BD.Models
+@using Proyecto.DTOS
+@using Proyecto.Services
+@using System.ComponentModel.DataAnnotations
+@using Proyecto.Components.Dialogs
+@inject IEquipoService EquipoService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Gestión de Equipos</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge">
+    <MudText Typo="Typo.h4" Class="mb-4">Gestión de Equipos</MudText>
+
+    <MudCard Class="mb-4">
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" md="3">
+                    <MudTextField @bind-Value="searchTerm" 
+                                  Label="Buscar equipos" 
+                                  Variant="Variant.Outlined" 
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="Icons.Material.Filled.Search"
+                                  OnAdornmentClick="SearchEquipos"
+                                  OnKeyUp="OnSearchKeyUp" />
+                </MudItem>
+                <MudItem xs="12" md="2">
+                    <MudSelect T="TipoEquipo?" @bind-Value="tipoFiltro"
+                              Label="Tipo"
+                              Variant="Variant.Outlined"
+                              Clearable="true">
+                        @foreach (var tipo in tiposEquipo)
+                        {
+                            <MudSelectItem Value="@((TipoEquipo?)tipo)">@tipo.GetDescription().ToUpper()</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="2">
+                    <MudSelect T="int?" @bind-Value="empleadoFiltro"
+                              Label="Empleado"
+                              Variant="Variant.Outlined"
+                              Clearable="true">
+                        @foreach (var empleado in empleados)
+                        {
+                            <MudSelectItem Value="@((int?)empleado.Id)">@empleado.PrimerNombre @empleado.PrimerApellido</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="2">
+                    <MudSelect T="EstadoEquipo?" @bind-Value="estadoFiltro"
+                              Label="Estado"
+                              Variant="Variant.Outlined"
+                              Clearable="true">
+                        @foreach (var estado in estadosEquipo)
+                        {
+                            <MudSelectItem Value="@((EstadoEquipo?)estado)">@estado.GetDescription().ToUpper()</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+            <MudGrid Class="mt-3">
+                 <MudItem xs="12" md="2">
+                    <MudSelect T="int" Value="pageSize" 
+                               Label="Por página"
+                               Variant="Variant.Outlined"
+                               ValueChanged="OnPageSizeChanged">
+                        <MudSelectItem Value="10">10</MudSelectItem>
+                        <MudSelectItem Value="25">25</MudSelectItem>
+                        <MudSelectItem Value="50">50</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" Class="d-flex justify-center gap-2">
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Primary" 
+                               StartIcon="Icons.Material.Filled.Search"
+                               OnClick="SearchEquipos"
+                               Size="Size.Small">
+                        Buscar
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined" 
+                               Color="Color.Secondary" 
+                               StartIcon="Icons.Material.Filled.Clear"
+                               OnClick="ClearFilters"
+                               Size="Size.Small">
+                        Limpiar
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" 
+                               Color="Color.Success" 
+                               StartIcon="Icons.Material.Filled.Add"
+                               OnClick="OpenCreateEquipoDialog"
+                               Size="Size.Small">
+                        Nuevo
+                    </MudButton>
+                </MudItem>
+               
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+
+    <MudCard>
+        <MudCardContent>
+            @if (isLoading)
+            {
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+            }
+            else
+            {
+                <div class="mb-3 d-flex justify-space-between align-center">
+                    <MudText Typo="Typo.h6">
+                        Mostrando @GetDisplayRange() de @totalEquipos equipos
+                    </MudText>
+                    <MudText Typo="Typo.body2" Class="text-muted">
+                        Página @currentPage de @totalPages
+                    </MudText>
+                </div>
+                
+                <MudTable Items="@equipos" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm">
+                    <HeaderContent>
+                        <MudTh>Identificador</MudTh>
+                        <MudTh>Nombre</MudTh>
+                        <MudTh>Tipo</MudTh>
+                        <MudTh>Marca</MudTh>
+                        <MudTh>Serie</MudTh>
+                        <MudTh>Empleado</MudTh>
+                        <MudTh>Estado</MudTh>
+                        <MudTh>Valor</MudTh>
+                        <MudTh>Acciones</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Identificador">
+                            <MudChip T="string" Size="Size.Small" Color="Color.Secondary">
+                                @(string.IsNullOrEmpty(context.Identificador) ? "Sin ID" : context.Identificador)
+                            </MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Nombre">@context.Nombre</MudTd>
+                        <MudTd DataLabel="Tipo">
+                            <MudChip T="string" Size="Size.Small" Color="@GetTipoColor(context.Tipo)">
+                                @context.Tipo.GetDescription().ToUpper()
+                            </MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Marca">@context.MarcaNombre</MudTd>
+                        <MudTd DataLabel="Serie">@context.Serie</MudTd>
+                        <MudTd DataLabel="Empleado">
+                            @if (!string.IsNullOrEmpty(context.EmpleadoNombre))
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Info">@context.EmpleadoNombre</MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Default">Sin asignar</MudChip>
+                            }
+                        </MudTd>
+                        <MudTd DataLabel="Estado">
+                            <MudChip T="string" Size="Size.Small" Color="@GetEstadoColor(context.Estado)">
+                                @context.Estado.GetDescription().ToUpper()
+                            </MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Valor">Q @FormatCurrency(context.Valor)</MudTd>
+                        <MudTd DataLabel="Acciones">
+                            <MudButtonGroup Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Small">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                              Color="Color.Primary" 
+                                              Size="Size.Small"
+                                              OnClick="@(() => OpenEditEquipoDialog(context))"
+                                              Title="Editar" />
+                                <MudIconButton Icon="@GetEstadoIcon(context.Estado)" 
+                                              Color="@GetEstadoActionColor(context.Estado)" 
+                                              Size="Size.Small"
+                                              OnClick="@(() => ToggleEstadoEquipo(context))"
+                                              Title="@GetEstadoActionTitle(context.Estado)" />
+                            </MudButtonGroup>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+
+                @if (totalPages > 1)
+                {
+                    <div class="d-flex justify-center mt-4">
+                        <MudPagination Count="@totalPages" 
+                                      Selected="@currentPage" 
+                                      SelectedChanged="OnPageChanged"
+                                      Color="Color.Primary"
+                                      Size="Size.Medium"
+                                      ShowFirstButton="true"
+                                      ShowLastButton="true" />
+                    </div>
+                }
+            }
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
+
+@code {
+    private List<EquipoDto> equipos = new();
+    private List<Empleado> empleados = new();
+    private List<TipoEquipo> tiposEquipo = new();
+    private List<EstadoEquipo> estadosEquipo = new();
+    
+    private string searchTerm = string.Empty;
+    private TipoEquipo? tipoFiltro;
+    private int? empleadoFiltro;
+    private EstadoEquipo? estadoFiltro;
+    
+    private int currentPage = 1;
+    private int pageSize = 25;
+    private int totalEquipos = 0;
+    private int totalPages = 0;
+    private bool isLoading = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        LoadEnums();
+        await LoadEmpleados();
+        await LoadEquipos();
+    }
+
+    private void LoadEnums()
+    {
+        tiposEquipo = Enum.GetValues<TipoEquipo>().ToList();
+        estadosEquipo = Enum.GetValues<EstadoEquipo>().ToList();
+    }
+
+    private async Task LoadEmpleados()
+    {
+        empleados = await EquipoService.GetEmpleadosAsync();
+    }
+
+    private async Task LoadEquipos()
+    {
+        isLoading = true;
+        try
+        {
+            var result = await EquipoService.GetEquiposPaginadosAsync(
+                currentPage, pageSize, tipoFiltro, empleadoFiltro, estadoFiltro, searchTerm);
+            
+            equipos = result.equipos;
+            totalEquipos = result.totalCount;
+            totalPages = (int)Math.Ceiling((double)totalEquipos / pageSize);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar equipos: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SearchEquipos()
+    {
+        currentPage = 1;
+        await LoadEquipos();
+    }
+
+    private async Task ClearFilters()
+    {
+        searchTerm = string.Empty;
+        tipoFiltro = null;
+        empleadoFiltro = null;
+        estadoFiltro = null;
+        currentPage = 1;
+        await LoadEquipos();
+    }
+
+    private async Task OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SearchEquipos();
+        }
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        currentPage = page;
+        await LoadEquipos();
+    }
+
+    private async Task OnPageSizeChanged(int newPageSize)
+    {
+        pageSize = newPageSize;
+        currentPage = 1;
+        await LoadEquipos();
+    }
+
+    private string GetDisplayRange()
+    {
+        var start = (currentPage - 1) * pageSize + 1;
+        var end = Math.Min(currentPage * pageSize, totalEquipos);
+        return $"{start}-{end}";
+    }
+
+    private Color GetTipoColor(TipoEquipo tipo) => tipo switch
+    {
+        TipoEquipo.Herramienta => Color.Warning,
+        TipoEquipo.Vehiculo => Color.Info,
+        TipoEquipo.Electronico => Color.Primary,
+        TipoEquipo.Mobiliario => Color.Success,
+        _ => Color.Default
+    };
+
+    private Color GetEstadoColor(EstadoEquipo estado) => estado switch
+    {
+        EstadoEquipo.Activo => Color.Success,
+        EstadoEquipo.Inactivo => Color.Default,
+        EstadoEquipo.Mantenimiento => Color.Warning,
+        EstadoEquipo.Suspendido => Color.Error,
+        _ => Color.Default
+    };
+
+    private string GetEstadoIcon(EstadoEquipo estado) => estado switch
+    {
+        EstadoEquipo.Activo => Icons.Material.Filled.Pause,
+        EstadoEquipo.Inactivo => Icons.Material.Filled.PlayArrow,
+        EstadoEquipo.Mantenimiento => Icons.Material.Filled.Build,
+        EstadoEquipo.Suspendido => Icons.Material.Filled.PlayArrow,
+        _ => Icons.Material.Filled.ChangeCircle
+    };
+
+    private Color GetEstadoActionColor(EstadoEquipo estado) => estado switch
+    {
+        EstadoEquipo.Activo => Color.Warning,
+        EstadoEquipo.Inactivo => Color.Success,
+        EstadoEquipo.Mantenimiento => Color.Primary,
+        EstadoEquipo.Suspendido => Color.Success,
+        _ => Color.Default
+    };
+
+    private string GetEstadoActionTitle(EstadoEquipo estado) => estado switch
+    {
+        EstadoEquipo.Activo => "Desactivar",
+        EstadoEquipo.Inactivo => "Activar",
+        EstadoEquipo.Mantenimiento => "En Mantenimiento",
+        EstadoEquipo.Suspendido => "Activar",
+        _ => "Cambiar Estado"
+    };
+
+    private async Task OpenCreateEquipoDialog()
+    {
+        var dialog = await DialogService.ShowAsync<CreateEditEquipoDialog>("Crear Nuevo Equipo", 
+            new DialogParameters
+            {
+                { "IsEditMode", false }
+            },
+            new DialogOptions 
+            { 
+                MaxWidth = MaxWidth.Medium, 
+                FullWidth = true,
+                CloseOnEscapeKey = false 
+            });
+
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            await LoadEquipos();
+        }
+    }
+
+    private async Task OpenEditEquipoDialog(EquipoDto equipoDto)
+    {
+        var dialog = await DialogService.ShowAsync<CreateEditEquipoDialog>($"Editar Equipo: {equipoDto.Nombre}", 
+            new DialogParameters
+            {
+                { "IsEditMode", true },
+                { "EquipoDto", equipoDto }
+            },
+            new DialogOptions 
+            { 
+                MaxWidth = MaxWidth.Medium, 
+                FullWidth = true,
+                CloseOnEscapeKey = false 
+            });
+
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            await LoadEquipos();
+        }
+    }
+
+    private async Task ToggleEstadoEquipo(EquipoDto equipoDto)
+    {
+        var nuevoEstado = equipoDto.Estado switch
+        {
+            EstadoEquipo.Activo => EstadoEquipo.Inactivo,
+            EstadoEquipo.Inactivo => EstadoEquipo.Activo,
+            EstadoEquipo.Suspendido => EstadoEquipo.Activo,
+            _ => EstadoEquipo.Activo
+        };
+
+        var success = await EquipoService.CambiarEstadoEquipoAsync(equipoDto.Id.Value, nuevoEstado);
+        
+        if (success)
+        {
+            Snackbar.Add($"Estado del equipo cambiado a {nuevoEstado.GetDescription()}", Severity.Success);
+            await LoadEquipos();
+        }
+        else
+        {
+            Snackbar.Add("Error al cambiar el estado del equipo", Severity.Error);
+        }
+    }
+
+    private async Task DeleteEquipo(EquipoDto equipoDto)
+    {
+        var parameters = new DialogParameters
+        {
+            { "ContentText", $"¿Está seguro que desea eliminar el equipo '{equipoDto.Nombre}'? Esta acción no se puede deshacer." },
+            { "ButtonText", "Eliminar" },
+            { "Color", Color.Error }
+        };
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+        var dialog = await DialogService.ShowAsync<MudDialog>("Confirmar Eliminación", parameters, options);
+        
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            var success = await EquipoService.DeleteEquipoAsync(equipoDto.Id.Value);
+            
+            if (success)
+            {
+                Snackbar.Add("Equipo eliminado exitosamente", Severity.Success);
+                await LoadEquipos();
+            }
+            else
+            {
+                Snackbar.Add("Error al eliminar el equipo", Severity.Error);
+            }
+        }
+    }
+
+    private string FormatCurrency(decimal value)
+    {
+        return value.ToString("N2", new System.Globalization.CultureInfo("en-US")
+        {
+            NumberFormat = new System.Globalization.NumberFormatInfo
+            {
+                NumberDecimalSeparator = ".",
+                NumberGroupSeparator = ",",
+                NumberDecimalDigits = 2
+            }
+        });
+    }
+}

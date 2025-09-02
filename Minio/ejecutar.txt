@@ -1,0 +1,11 @@
+# Configurar alias (reemplaza con tus credenciales)
+mc alias set local http://localhost:9000 usuario contraseña
+
+# Hacer público
+mc anonymous set public local/imagenes
+
+# Verificar
+mc anonymous get local/imagenes
+
+
+./minio server ./data/

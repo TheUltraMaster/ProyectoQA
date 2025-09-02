@@ -23,6 +23,7 @@ public class AreaService : IAreaService
     {
         return await _context.Areas
             .Include(a => a.IdUsuarioNavigation)
+            .Include(a => a.Empleados)
             .OrderBy(a => a.Nombre)
             .ToListAsync();
     }
@@ -31,6 +32,7 @@ public class AreaService : IAreaService
     {
         var query = _context.Areas
             .Include(a => a.IdUsuarioNavigation)
+            .Include(a => a.Empleados)
             .AsQueryable();
 
         if (!string.IsNullOrEmpty(search))
@@ -53,6 +55,7 @@ public class AreaService : IAreaService
     {
         return await _context.Areas
             .Include(a => a.IdUsuarioNavigation)
+            .Include(a => a.Empleados)
             .FirstOrDefaultAsync(a => a.Id == id);
     }
 
@@ -123,6 +126,26 @@ public class AreaService : IAreaService
         return await _context.Usuarios
             .OrderBy(u => u.Usuario1)
             .ToListAsync();
+    }
+
+    public async Task<(List<Usuario> usuarios, int totalCount)> GetUsuariosPaginadosAsync(int page, int pageSize, string? search = null)
+    {
+        var query = _context.Usuarios.AsQueryable();
+
+        if (!string.IsNullOrEmpty(search))
+        {
+            query = query.Where(u => u.Usuario1.Contains(search));
+        }
+
+        var totalCount = await query.CountAsync();
+
+        var usuarios = await query
+            .OrderBy(u => u.Usuario1)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (usuarios, totalCount);
     }
 
     public async Task<bool> AreaNameExistsAsync(string nombre, int? excludeId = null)

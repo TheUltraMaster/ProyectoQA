@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using BD.Models;
 
 namespace Proyecto.DTOS;
 
@@ -35,16 +36,17 @@ public class EquipoDto
 
     public string? Extras { get; set; }
 
-    [RegularExpression(@"^(110v|220v|diesel|regular|super|bateria|ninguna)$", ErrorMessage = "El tipo de alimentación debe ser: 110v, 220v, diesel, regular, super, bateria o ninguna")]
-    public string? TipoAlimentacion { get; set; }
+    public TipoAlimentacion? TipoAlimentacion { get; set; }
 
     [Range(1, int.MaxValue, ErrorMessage = "El ID del empleado debe ser mayor a 0")]
     public int? IdEmpleado { get; set; }
 
-    [RegularExpression(@"^(activo|inactivo|mantenimiento|suspendido)$", ErrorMessage = "El estado debe ser: activo, inactivo, mantenimiento o suspendido")]
-    public string? Estado { get; set; } = "activo";
+    public EstadoEquipo Estado { get; set; } = EstadoEquipo.Activo;
 
     [Required(ErrorMessage = "El tipo de equipo es obligatorio")]
-    [RegularExpression(@"^(mobiliario|vehiculo|electronico|herramienta)$", ErrorMessage = "El tipo debe ser: mobiliario, vehiculo, electronico o herramienta")]
-    public string Tipo { get; set; } = string.Empty;
+    public TipoEquipo Tipo { get; set; }
+    
+    public string? EmpleadoNombre { get; set; }
+    
+    public string? MarcaNombre { get; set; }
 }

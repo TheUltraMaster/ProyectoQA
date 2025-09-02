@@ -1,31 +1,30 @@
-@page "/usuarios"
-@attribute [Authorize(Policy="AdminOnly")]
+@page "/empleados"
 @rendermode InteractiveServer
+@attribute [Authorize(Policy="AdminOnly")]
 @using BD.Models
 @using Proyecto.DTOS
 @using Proyecto.Services
-@using System.ComponentModel.DataAnnotations
 @using Proyecto.Components.Dialogs
-@inject IUsuarioService UsuarioService
+@using System.ComponentModel.DataAnnotations
 @inject IEmpleadoService EmpleadoService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 
-<PageTitle>Gestión de Usuarios</PageTitle>
+<PageTitle>Gestión de Empleados</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge">
-    <MudText Typo="Typo.h4" Class="mb-4">Gestión de Usuarios</MudText>
+    <MudText Typo="Typo.h4" Class="mb-4">Gestión de Empleados</MudText>
 
     <MudCard Class="mb-4">
         <MudCardContent>
             <MudGrid>
                 <MudItem xs="12" md="4">
                     <MudTextField @bind-Value="searchTerm" 
-                                  Label="Buscar por nombre o usuario" 
+                                  Label="Buscar por nombre, área o usuario" 
                                   Variant="Variant.Outlined" 
                                   Adornment="Adornment.End"
                                   AdornmentIcon="Icons.Material.Filled.Search"
-                                  OnAdornmentClick="SearchUsuarios"
+                                  OnAdornmentClick="SearchEmpleados"
                                   OnKeyUp="OnSearchKeyUp" />
                 </MudItem>
                 <MudItem xs="12" md="2">
@@ -44,7 +43,7 @@
                         <MudButton Variant="Variant.Filled" 
                                    Color="Color.Primary" 
                                    StartIcon="Icons.Material.Filled.Search"
-                                   OnClick="SearchUsuarios">
+                                   OnClick="SearchEmpleados">
                             Buscar
                         </MudButton>
                         <MudButton Variant="Variant.Outlined" 
@@ -57,10 +56,10 @@
                     </div>
                     <MudButton Variant="Variant.Filled" 
                                Color="Color.Success" 
-                               StartIcon="Icons.Material.Filled.PersonAdd"
-                               OnClick="OpenCreateUserDialog"
+                               StartIcon="Icons.Material.Filled.Add"
+                               OnClick="OpenCreateEmpleadoDialog"
                                Class="ml-4">
-                        Nuevo Usuario
+                        Nuevo Empleado
                     </MudButton>
                 </MudItem>
             </MudGrid>
@@ -77,74 +76,64 @@
             {
                 <div class="mb-3 d-flex justify-space-between align-center">
                     <MudText Typo="Typo.h6">
-                        Mostrando @GetDisplayRange() de @totalUsers usuarios
+                        Mostrando @GetDisplayRange() de @totalEmpleados empleados
                     </MudText>
                     <MudText Typo="Typo.body2" Class="text-muted">
                         Página @currentPage de @totalPages
                     </MudText>
                 </div>
                 
-                <MudTable Items="@usuarios" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm">
+                <MudTable Items="@empleados" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm">
                     <HeaderContent>
+                        <MudTh>Nombre Completo</MudTh>
+                        <MudTh>Área</MudTh>
                         <MudTh>Usuario</MudTh>
-                        <MudTh>Empleado</MudTh>
-                        <MudTh>Admin</MudTh>
                         <MudTh>Estado</MudTh>
-                        <MudTh>Fecha Creación</MudTh>
                         <MudTh>Acciones</MudTh>
                     </HeaderContent>
                     <RowTemplate>
-                        <MudTd DataLabel="Usuario">@context.Usuario1</MudTd>
-                        <MudTd DataLabel="Empleado">
-                            @if (context.Empleado != null)
+                        <MudTd DataLabel="Nombre Completo">
+                            @($"{context.PrimerNombre} {context.SegundoNombre} {context.PrimerApellido} {context.SegundoApellido}")
+                        </MudTd>
+                        <MudTd DataLabel="Área">
+                            @if (context.IdAreaNavigation != null)
                             {
-                                <text>@context.Empleado.PrimerNombre @context.Empleado.PrimerApellido</text>
+                                <MudChip T="string" Color="Color.Info" Size="Size.Small">
+                                    @context.IdAreaNavigation.Nombre
+                                </MudChip>
                             }
                             else
                             {
-                                <text>Sin empleado</text>
+                                <MudChip T="string" Color="Color.Default" Size="Size.Small">
+                                    Sin área asignada
+                                </MudChip>
                             }
                         </MudTd>
-                        <MudTd DataLabel="Admin">
-                            <MudChip T="string" Color="@(context.IsAdmin ? Color.Success : Color.Default)" 
-                                     Size="Size.Small">
-                                @(context.IsAdmin ? "Sí" : "No")
-                            </MudChip>
+                        <MudTd DataLabel="Usuario">
+                            @if (context.IdUsuarioNavigation != null)
+                            {
+                                <text>@context.IdUsuarioNavigation.Usuario1</text>
+                            }
+                            else
+                            {
+                                <text>Sin usuario</text>
+                            }
                         </MudTd>
                         <MudTd DataLabel="Estado">
-                            <MudChip T="string" Color="@(context.Activo == 1 ? Color.Success : Color.Error)" 
+                            <MudChip T="string" 
+                                     Color="@GetEstadoColor(context.Estado)" 
                                      Size="Size.Small">
-                                @(context.Activo == 1 ? "Activo" : "Inactivo")
+                                @GetEstadoText(context.Estado)
                             </MudChip>
                         </MudTd>
-                        <MudTd DataLabel="Fecha Creación">@context.FechaCommit?.ToString("dd/MM/yyyy")</MudTd>
                         <MudTd DataLabel="Acciones">
-                            <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
-                                <MudButton Color="Color.Primary" 
-                                           StartIcon="Icons.Material.Filled.Edit"
-                                           OnClick="() => OpenEditUserDialog(context)"
-                                           Size="Size.Small">
-                                    Editar
-                                </MudButton>
-                                @if (context.Activo == 1)
-                                {
-                                    <MudButton Color="Color.Warning" 
-                                               StartIcon="Icons.Material.Filled.Block"
-                                               OnClick="() => DeactivateUser(context.Id)"
-                                               Size="Size.Small">
-                                        Desactivar
-                                    </MudButton>
-                                }
-                                else
-                                {
-                                    <MudButton Color="Color.Success" 
-                                               StartIcon="Icons.Material.Filled.CheckCircle"
-                                               OnClick="() => ActivateUser(context.Id)"
-                                               Size="Size.Small">
-                                        Activar
-                                    </MudButton>
-                                }
-                            </MudButtonGroup>
+                            <MudButton Color="Color.Primary" 
+                                       StartIcon="Icons.Material.Filled.Edit"
+                                       OnClick="() => OpenEditEmpleadoDialog(context)"
+                                       Size="Size.Small"
+                                       Variant="Variant.Outlined">
+                                Editar
+                            </MudButton>
                         </MudTd>
                     </RowTemplate>
                 </MudTable>
@@ -167,20 +156,16 @@
     </MudCard>
 </MudContainer>
 
-
-
 @code {
-    private List<Usuario> usuarios = new();
+    private List<Empleado> empleados = new();
     private bool isLoading = true;
     private string searchTerm = "";
     
     // Pagination
     private int currentPage = 1;
     private int pageSize = 10;
-    private int totalUsers = 0;
+    private int totalEmpleados = 0;
     private int totalPages = 0;
-    
-    
     
     private DialogOptions dialogOptions = new()
     {
@@ -191,15 +176,15 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadUsuarios();
+        await LoadEmpleados();
     }
 
-    private async Task LoadUsuarios()
+    private async Task LoadEmpleados()
     {
         await RefreshCurrentView();
     }
 
-    private async Task SearchUsuarios()
+    private async Task SearchEmpleados()
     {
         currentPage = 1; // Reset to first page when searching
         await RefreshCurrentView();
@@ -209,7 +194,7 @@
     {
         searchTerm = "";
         currentPage = 1;
-        await LoadUsuarios();
+        await LoadEmpleados();
     }
     
     private async Task OnPageChanged(int page)
@@ -230,65 +215,21 @@
             await RefreshCurrentView();
         }
     }
-    
 
     private async Task OnSearchKeyUp(KeyboardEventArgs e)
     {
         if (e.Key == "Enter")
         {
-            await SearchUsuarios();
+            await SearchEmpleados();
         }
     }
-
-    private async Task ActivateUser(int userId)
-    {
-        try
-        {
-            var success = await UsuarioService.ActivateUserAsync(userId);
-            if (success)
-            {
-                Snackbar.Add("Usuario activado correctamente", Severity.Success);
-                await RefreshCurrentView();
-            }
-            else
-            {
-                Snackbar.Add("No se pudo activar el usuario", Severity.Error);
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error al activar usuario: {ex.Message}", Severity.Error);
-        }
-    }
-
-    private async Task DeactivateUser(int userId)
-    {
-        try
-        {
-            var success = await UsuarioService.DeactivateUserAsync(userId);
-            if (success)
-            {
-                Snackbar.Add("Usuario desactivado correctamente", Severity.Success);
-                await RefreshCurrentView();
-            }
-            else
-            {
-                Snackbar.Add("No se pudo desactivar el usuario", Severity.Error);
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error al desactivar usuario: {ex.Message}", Severity.Error);
-        }
-    }
-
     
     private string GetDisplayRange()
     {
-        if (totalUsers == 0) return "0";
+        if (totalEmpleados == 0) return "0";
         
         var start = (currentPage - 1) * pageSize + 1;
-        var end = Math.Min(currentPage * pageSize, totalUsers);
+        var end = Math.Min(currentPage * pageSize, totalEmpleados);
         
         return $"{start}-{end}";
     }
@@ -298,14 +239,14 @@
         isLoading = true;
         try
         {
-            var result = await UsuarioService.SearchUsuariosByNameAsync(searchTerm ?? "", currentPage, pageSize);
-            usuarios = result.usuarios;
-            totalUsers = result.totalCount;
-            totalPages = (int)Math.Ceiling((double)totalUsers / pageSize);
+            var result = await EmpleadoService.GetEmpleadosPagedAsync(currentPage, pageSize, searchTerm);
+            empleados = result.Empleados;
+            totalEmpleados = result.TotalCount;
+            totalPages = (int)Math.Ceiling((double)totalEmpleados / pageSize);
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error al cargar usuarios: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Error al cargar empleados: {ex.Message}", Severity.Error);
         }
         finally
         {
@@ -313,34 +254,52 @@
         }
     }
     
-    // Create User Methods
-    private async Task OpenCreateUserDialog()
+    // Create Empleado Methods
+    private async Task OpenCreateEmpleadoDialog()
     {
         var parameters = new DialogParameters();
         parameters.Add("IsEditMode", false);
 
-        var dialog = await DialogService.ShowAsync<CreateEditUsuarioDialog>("Crear Nuevo Usuario", parameters);
+        var dialog = await DialogService.ShowAsync<CreateEditEmpleadoDialog>("Crear Nuevo Empleado", parameters, dialogOptions);
         var result = await dialog.Result;
 
-        if (!result.Canceled && result.Data != null)
+        if (!result.Canceled)
         {
             await RefreshCurrentView();
         }
     }
     
-    // Edit User Methods
-    private async Task OpenEditUserDialog(Usuario usuario)
+    // Edit Empleado Methods
+    private async Task OpenEditEmpleadoDialog(Empleado empleado)
     {
         var parameters = new DialogParameters();
         parameters.Add("IsEditMode", true);
-        parameters.Add("Usuario", usuario);
+        parameters.Add("Empleado", empleado);
 
-        var dialog = await DialogService.ShowAsync<CreateEditUsuarioDialog>($"Editar Usuario - {usuario.Usuario1}", parameters);
+        var dialog = await DialogService.ShowAsync<CreateEditEmpleadoDialog>($"Editar Empleado - {empleado.PrimerNombre} {empleado.PrimerApellido}", parameters, dialogOptions);
         var result = await dialog.Result;
 
-        if (!result.Canceled && result.Data != null)
+        if (!result.Canceled)
         {
             await RefreshCurrentView();
         }
+    }
+
+
+    private Color GetEstadoColor(string? estado)
+    {
+        return estado?.ToLower() switch
+        {
+            "activo" => Color.Success,
+            "inactivo" => Color.Error,
+            "vacaciones" => Color.Warning,
+            _ => Color.Default
+        };
+    }
+
+    private string GetEstadoText(string? estado)
+    {
+        if (string.IsNullOrEmpty(estado)) return "Sin estado";
+        return char.ToUpper(estado[0]) + estado.Substring(1);
     }
 }

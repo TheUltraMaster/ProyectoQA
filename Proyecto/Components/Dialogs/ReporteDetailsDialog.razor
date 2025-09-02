@@ -1,0 +1,173 @@
+@using BD.Models
+@using Proyecto.DTOS
+@using Proyecto.Services
+@using BD.Data
+@using Microsoft.EntityFrameworkCore
+@using Proyecto.Components.Dialogs
+@inject IReporteService ReporteService
+@inject IDialogService DialogService
+@inject IServiceProvider ServiceProvider
+
+<MudDialog>
+    <DialogContent>
+        <MudContainer Style="max-width: 800px;">
+            @if (reporte != null)
+            {
+                <MudGrid>
+                    <MudItem xs="12">
+                        <MudCard>
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.h6">Reporte #@reporte.Id</MudText>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                <MudGrid>
+                                    <MudItem xs="12" sm="6">
+                                        <MudText Typo="Typo.subtitle2" Class="mb-1">Causa:</MudText>
+                                        <MudText>@reporte.IdCausaNavigation?.Nombre</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6">
+                                        <MudText Typo="Typo.subtitle2" Class="mb-1">Equipo:</MudText>
+                                        <MudText>@reporte.IdEquipoNavigation?.Nombre</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6">
+                                        <MudText Typo="Typo.subtitle2" Class="mb-1">Empleado:</MudText>
+                                        <MudText>@reporte.IdEmpleadoNavigation?.PrimerNombre @reporte.IdEmpleadoNavigation?.PrimerApellido</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6">
+                                        <MudText Typo="Typo.subtitle2" Class="mb-1">Fecha:</MudText>
+                                        <MudText>@reporte.FechaCommit?.ToString("dd/MM/yyyy HH:mm")</MudText>
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudText Typo="Typo.subtitle2" Class="mb-1">Observación:</MudText>
+                                        <MudText Style="white-space: pre-wrap;">@(reporte.Observacion ?? "Sin observaciones")</MudText>
+                                    </MudItem>
+                                </MudGrid>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+
+                    @if (reporte.Imagens.Any())
+                    {
+                        <MudItem xs="12">
+                            <MudCard>
+                                <MudCardHeader>
+                                    <CardHeaderContent>
+                                        <MudText Typo="Typo.h6">Imágenes (@reporte.Imagens.Count)</MudText>
+                                    </CardHeaderContent>
+                                </MudCardHeader>
+                                <MudCardContent>
+                                    <MudGrid>
+                                        @foreach (var imagen in reporte.Imagens)
+                                        {
+                                            <MudItem xs="12" sm="6" md="4">
+                                                <MudCard Outlined="true">
+                                                    <MudCardContent Class="pa-2">
+                                                        <div class="d-flex justify-space-between align-center">
+                                                            <MudText Typo="Typo.caption">Imagen #@imagen.Id</MudText>
+                                                            <div>
+                                                                <MudIconButton Size="Size.Small"
+                                                                             Icon="Icons.Material.Outlined.RemoveRedEye"
+                                                                             Color="Color.Primary"
+                                                                             OnClick="@(() => ViewImage(imagen.Url))"
+                                                                             Title="Ver imagen" />
+                                                                <MudIconButton Size="Size.Small"
+                                                                             Icon="Icons.Material.Outlined.OpenInNew"
+                                                                             Color="Color.Info"
+                                                                             Href="@GetFullImageUrl(imagen.Url)"
+                                                                             Target="_blank"
+                                                                             Title="Abrir en nueva pestaña" />
+                                                            </div>
+                                                        </div>
+                                                        <div class="mt-2">
+                                                            <MudImage Src="@GetFullImageUrl(imagen.Url)" 
+                                                                    Alt="Imagen del reporte"
+                                                                    Fluid="true"
+                                                                    ObjectFit="ObjectFit.Cover"
+                                                                    Height="120"
+                                                                    Class="rounded cursor-pointer"
+                                                                    @onclick="@(() => ViewImage(imagen.Url))" />
+                                                        </div>
+                                                    </MudCardContent>
+                                                </MudCard>
+                                            </MudItem>
+                                        }
+                                    </MudGrid>
+                                </MudCardContent>
+                            </MudCard>
+                        </MudItem>
+                    }
+                    else
+                    {
+                        <MudItem xs="12">
+                            <MudAlert Severity="Severity.Info">
+                                Este reporte no tiene imágenes asociadas.
+                            </MudAlert>
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+        </MudContainer>
+    </DialogContent>
+    
+    <DialogActions>
+        <MudButton OnClick="Close">Cerrar</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] 
+    IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] 
+    public ReporteDto ReporteDto { get; set; } = new();
+
+    private Reporte? reporte;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (ReporteDto.Id.HasValue)
+        {
+            reporte = await GetReporteWithDetailsAsync(ReporteDto.Id.Value);
+        }
+    }
+
+    private async Task<Reporte?> GetReporteWithDetailsAsync(int id)
+    {
+        using var scope = ServiceProvider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<BD.Data.ProyectoContext>();
+        
+        return await context.Reportes
+            .Include(r => r.IdCausaNavigation)
+            .Include(r => r.IdEquipoNavigation)
+            .Include(r => r.IdEmpleadoNavigation)
+            .Include(r => r.Imagens)
+            .FirstOrDefaultAsync(r => r.Id == id);
+    }
+
+    private string GetFullImageUrl(string imagePath)
+    {
+        return ReporteService.GetImageFullUrl(imagePath);
+    }
+
+    private async Task ViewImage(string imagePath)
+    {
+        var parameters = new DialogParameters();
+        parameters.Add("ImageUrl", GetFullImageUrl(imagePath));
+
+        var dialog = await DialogService.ShowAsync<ImageViewDialog>("Vista de Imagen", parameters,
+            new DialogOptions
+            {
+                MaxWidth = MaxWidth.Large,
+                FullWidth = true
+            });
+        
+        await dialog.Result;
+    }
+
+    private void Close()
+    {
+        MudDialog.Close();
+    }
+}

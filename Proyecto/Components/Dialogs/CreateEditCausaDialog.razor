@@ -1,0 +1,161 @@
+@using BD.Models
+@using Proyecto.DTOS
+@using Proyecto.Services
+@using MudBlazor
+@using System.ComponentModel.DataAnnotations
+@inject ICausaService CausaService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudContainer Style="max-width: 600px;">
+            <MudForm @ref="form" @bind-IsValid="@isFormValid">
+                <MudGrid>
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="model.Nombre"
+                                     Label="Nombre de la Causa"
+                                     Variant="Variant.Outlined"
+                                     Required="true"
+                                     RequiredError="El nombre de la causa es obligatorio"
+                                     MaxLength="50"
+                                     Counter="50"
+                                     Validation="@(new RegularExpressionAttribute(@"^[A-ZÁÉÍÓÚÑ\s]+$") { ErrorMessage = "El nombre debe estar en mayúsculas y solo puede contener letras y espacios" })"
+                                     For="@(() => model.Nombre)"
+                                     @onblur="OnNameChanged"
+                                     @oninput="@((ChangeEventArgs e) => OnNameInput(e.Value?.ToString() ?? string.Empty))" />
+                        
+                        @if (nameExistsError)
+                        {
+                            <MudText Typo="Typo.body2" Class="mt-2" Color="Color.Error">
+                                <MudIcon Icon="Icons.Material.Filled.Error" Size="Size.Small" Class="mr-1" />
+                                Ya existe una causa con este nombre
+                            </MudText>
+                        }
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="model.Descripcion"
+                                     Label="Descripción (Opcional)"
+                                     Variant="Variant.Outlined"
+                                     Lines="3"
+                                     MaxLength="300"
+                                     Counter="300"
+                                     For="@(() => model.Descripcion)" />
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudContainer>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@(!isFormValid || isSubmitting || nameExistsError)">
+            @if (isSubmitting)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                <MudText Class="ms-2">Procesando...</MudText>
+            }
+            else
+            {
+                @(IsEditMode ? "Actualizar" : "Crear")
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    
+    [Parameter] public bool IsEditMode { get; set; } = false;
+    [Parameter] public CausaDto? Causa { get; set; }
+    
+    private MudForm form = null!;
+    private bool isFormValid;
+    private bool isSubmitting;
+    private CausaDto model = new();
+    private bool nameExistsError = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsEditMode && Causa != null)
+        {
+            model.Id = Causa.Id;
+            model.Nombre = Causa.Nombre;
+            model.Descripcion = Causa.Descripcion;
+        }
+    }
+
+    private void OnNameInput(string value)
+    {
+        // Convert to uppercase as user types
+        var upperValue = value.ToUpper();
+        if (model.Nombre != upperValue)
+        {
+            model.Nombre = upperValue;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnNameChanged()
+    {
+        if (string.IsNullOrWhiteSpace(model.Nombre))
+        {
+            nameExistsError = false;
+            return;
+        }
+
+        // Check if name exists
+        try
+        {
+            var excludeId = IsEditMode && Causa != null ? Causa.Id : (int?)null;
+            nameExistsError = await CausaService.ExistsNombreAsync(model.Nombre, excludeId);
+        }
+        catch
+        {
+            nameExistsError = false;
+        }
+        
+        StateHasChanged();
+    }
+
+    private async Task Submit()
+    {
+        if (!isFormValid || nameExistsError) return;
+
+        isSubmitting = true;
+        try
+        {
+            if (IsEditMode && Causa != null && Causa.Id.HasValue)
+            {
+                var result = await CausaService.UpdateCausaAsync(Causa.Id.Value, model);
+                if (result != null)
+                {
+                    Snackbar.Add("Causa actualizada correctamente", Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(result));
+                }
+                else
+                {
+                    Snackbar.Add("No se pudo actualizar la causa", Severity.Error);
+                }
+            }
+            else
+            {
+                var result = await CausaService.CreateCausaAsync(model);
+                Snackbar.Add("Causa creada correctamente", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(result));
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al {(IsEditMode ? "actualizar" : "crear")} causa: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

@@ -3,7 +3,6 @@
 @using Proyecto.Components.Layout
 @using Proyecto.Models
 @using MudBlazor
-
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @attribute [AllowAnonymous]
@@ -11,10 +10,11 @@
 
 <PageTitle>Iniciar Sesión</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small">
-    <MudGrid Justify="Justify.Center" AlignItems="Center" Style="min-height: 100vh;">
-        <MudItem xs="12">
-            <MudPaper Elevation="3" Style="padding: 2rem;">
+<div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--mud-palette-background);">
+    <MudContainer MaxWidth="MaxWidth.Small">
+        <MudGrid Justify="Justify.Center" AlignItems="Center">
+            <MudItem xs="12">
+                <MudPaper Elevation="3" Style="padding: 2rem; max-width: 400px; width: 100%;">
                 <MudStack Spacing="4">
                     <MudText Typo="Typo.h4" Align="Align.Center" Color="Color.Primary">
                         Sistema de Gestión
@@ -55,9 +55,7 @@
                                 name="password"
                                 required />
 
-                            <MudCheckBox 
-                                @bind-Value="loginModel.RememberMe"
-                                Label="Recordarme" />
+                          
 
                             <MudButton 
                                 ButtonType="ButtonType.Submit"
@@ -70,10 +68,11 @@
                         </MudStack>
                     </form>
                 </MudStack>
-            </MudPaper>
-        </MudItem>
-    </MudGrid>
-</MudContainer>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </MudContainer>
+</div>
 
 
 @code {

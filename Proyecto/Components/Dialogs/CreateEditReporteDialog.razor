@@ -1,0 +1,451 @@
+@using BD.Models
+@using Proyecto.DTOS
+@using Proyecto.Services
+@inject IReporteService ReporteService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudContainer Style="max-width: 600px;">
+            <EditForm Model="reporteDto" OnValidSubmit="OnValidSubmit" @ref="editForm">
+                <DataAnnotationsValidator />
+                <MudValidationSummary />
+                
+                <MudGrid>
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="reporteDto.Observacion"
+                                    For="@(() => reporteDto.Observacion)"
+                                    Label="Observación"
+                                    Variant="Variant.Outlined"
+                                    Lines="3"
+                                    Immediate="true" />
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudSelect @bind-Value="reporteDto.IdCausa"
+                                 For="@(() => reporteDto.IdCausa)"
+                                 Label="Causa"
+                                 Placeholder="Selecciona una causa"
+                                 Variant="Variant.Outlined"
+                                 AnchorOrigin="Origin.BottomCenter">
+                            <MudSelectItem Value="0" Disabled="true">Selecciona una causa</MudSelectItem>
+                            @foreach (var causa in causas)
+                            {
+                                <MudSelectItem Value="@causa.Id">@causa.Nombre</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudAutocomplete T="Equipo" 
+                                       @bind-Value="SelectedEquipo"
+                                       For="@(() => SelectedEquipo)"
+                                       Label="Equipo"
+                                       Placeholder="Buscar equipo por nombre o identificador"
+                                       Variant="Variant.Outlined"
+                                       SearchFunc="SearchEquipos"
+                                       ToStringFunc="@(e => e == null ? "" : $"{e.Nombre} ({e.Identificador})")"
+                                       ShowProgressIndicator="true"
+                                       MaxItems="50"
+                                       Dense="true"
+                                       ResetValueOnEmptyText="true"
+                                       CoerceText="false"
+                                       CoerceValue="false"
+                                       AdornmentIcon="Icons.Material.Filled.Search"
+                                       AdornmentColor="Color.Primary"
+                                       MinCharacters="0"
+                                       DebounceInterval="300">
+                            <ItemTemplate Context="equipo">
+                                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="Icons.Material.Filled.Computer" Size="Size.Small" />
+                                    <div>
+                                        <MudText Typo="Typo.body2">@equipo.Nombre</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@equipo.Identificador</MudText>
+                                    </div>
+                                </MudStack>
+                            </ItemTemplate>
+                        </MudAutocomplete>
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudAutocomplete T="Empleado" 
+                                       @bind-Value="SelectedEmpleado"
+                                       For="@(() => SelectedEmpleado)"
+                                       Label="Empleado"
+                                       Placeholder="Buscar empleado por nombres o apellidos"
+                                       Variant="Variant.Outlined"
+                                       SearchFunc="SearchEmpleados"
+                                       ToStringFunc="@(e => e == null ? "" : $"{e.PrimerNombre} {e.PrimerApellido}")"
+                                       ShowProgressIndicator="true"
+                                       MaxItems="50"
+                                       Dense="true"
+                                       ResetValueOnEmptyText="true"
+                                       CoerceText="false"
+                                       CoerceValue="false"
+                                       AdornmentIcon="Icons.Material.Filled.Search"
+                                       AdornmentColor="Color.Primary"
+                                       MinCharacters="0"
+                                       DebounceInterval="300">
+                            <ItemTemplate Context="empleado">
+                                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="Icons.Material.Filled.Person" Size="Size.Small" />
+                                    <div>
+                                        <MudText Typo="Typo.body2">@empleado.PrimerNombre @empleado.PrimerApellido</MudText>
+                                        @if (!string.IsNullOrWhiteSpace(empleado.SegundoNombre) || !string.IsNullOrWhiteSpace(empleado.SegundoApellido))
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@empleado.SegundoNombre @empleado.SegundoApellido</MudText>
+                                        }
+                                    </div>
+                                </MudStack>
+                            </ItemTemplate>
+                        </MudAutocomplete>
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Imagen (opcional)</MudText>
+                        
+                        <MudFileUpload T="IBrowserFile" 
+                                     For="@(() => selectedImageFile)"
+                                     @bind-Files="selectedImageFile"
+                                     Accept=".jpg,.jpeg,.png"
+                                     MaximumFileCount="1">
+                            <ActivatorContent>
+                                <MudPaper Height="100px"
+                                        Outlined="true"
+                                        Class="d-flex align-center justify-center mud-width-full cursor-pointer">
+                                    @if (selectedImageFile != null)
+                                    {
+                                        <div class="d-flex flex-column align-center">
+                                            <MudIcon Icon="Icons.Material.Filled.Image" Style="font-size:3rem" />
+                                            <MudText Typo="Typo.body2">@selectedImageFile.Name</MudText>
+                                            <MudText Typo="Typo.caption">@FormatBytes(selectedImageFile.Size)</MudText>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="d-flex flex-column align-center">
+                                            <MudIcon Icon="Icons.Material.Filled.CloudUpload" Style="font-size:3rem" />
+                                            <MudText Typo="Typo.body2">Seleccionar imagen</MudText>
+                                            <MudText Typo="Typo.caption">JPG, PNG (máx. 10MB)</MudText>
+                                        </div>
+                                    }
+                                </MudPaper>
+                            </ActivatorContent>
+                        </MudFileUpload>
+
+                        @if (selectedImageFile != null)
+                        {
+                            <MudStack Row Class="mt-2">
+                                <MudButton Variant="Variant.Outlined" 
+                                         Color="Color.Error" 
+                                         Size="Size.Small"
+                                         OnClick="ClearSelectedImage">
+                                    <MudIcon Icon="Icons.Material.Filled.Clear" Size="Size.Small" />
+                                    Quitar
+                                </MudButton>
+                            </MudStack>
+                        }
+                    </MudItem>
+
+                    @if (!string.IsNullOrEmpty(uploadedImageUrl))
+                    {
+                        <MudItem xs="12">
+                            <MudAlert Severity="Severity.Success">
+                                Imagen subida exitosamente
+                            </MudAlert>
+                        </MudItem>
+                    }
+                </MudGrid>
+
+                
+            </EditForm>
+        </MudContainer>
+    </DialogContent>
+    
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" 
+                  Variant="Variant.Filled"
+                  Disabled="@(isSaving || !IsFormValid())"
+                  OnClick="OnValidSubmit">
+            @if (isSaving)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                <MudText Class="ms-2">Guardando...</MudText>
+            }
+            else
+            {
+                <MudText>@(reporteDto.Id == null ? "Crear" : "Actualizar")</MudText>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] 
+    IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] 
+    public ReporteDto ReporteDto { get; set; } = new();
+
+    private ReporteDto reporteDto = new();
+    private List<Causa> causas = new();
+    private List<Equipo> equipos = new();
+    private List<Empleado> empleados = new();
+    
+    private IBrowserFile? selectedImageFile;
+    private string? uploadedImageUrl;
+    private bool isSaving;
+    private EditForm editForm = null!;
+
+    private readonly Dictionary<string, List<Equipo>> equiposCache = new();
+    private readonly Dictionary<string, List<Empleado>> empleadosCache = new();
+    private readonly Dictionary<string, int> equiposPageCache = new();
+    private readonly Dictionary<string, int> empleadosPageCache = new();
+    
+    private const int PageSize = 20;
+
+    protected override async Task OnInitializedAsync()
+    {
+        reporteDto = new ReporteDto
+        {
+            Id = ReporteDto.Id,
+            Observacion = ReporteDto.Observacion,
+            IdCausa = ReporteDto.IdCausa > 0 ? ReporteDto.IdCausa : 0,
+            IdEquipo = ReporteDto.IdEquipo > 0 ? ReporteDto.IdEquipo : 0,
+            IdEmpleado = ReporteDto.IdEmpleado > 0 ? ReporteDto.IdEmpleado : 0
+        };
+
+        await LoadSelectData();
+        await LoadSelectedItems();
+    }
+
+    private async Task LoadSelectData()
+    {
+        try
+        {
+            causas = await ReporteService.GetAllCausasAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar datos: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task LoadSelectedItems()
+    {
+        try
+        {
+            if (reporteDto.IdEquipo > 0)
+            {
+                equipos = await ReporteService.GetAllEquiposAsync();
+                SelectedEquipo = equipos.FirstOrDefault(e => e.Id == reporteDto.IdEquipo);
+            }
+
+            if (reporteDto.IdEmpleado > 0)
+            {
+                empleados = await ReporteService.GetAllEmpleadosAsync();
+                SelectedEmpleado = empleados.FirstOrDefault(e => e.Id == reporteDto.IdEmpleado);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar elementos seleccionados: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task<IEnumerable<Equipo>> SearchEquipos(string value, CancellationToken token)
+    {
+        try
+        {
+            var searchKey = string.IsNullOrWhiteSpace(value) ? "" : value.ToLowerInvariant();
+            
+            if (!equiposCache.TryGetValue(searchKey, out var cachedEquipos))
+            {
+                var (equipos, hasMore) = await ReporteService.SearchEquiposPaginatedAsync(value, 1, PageSize * 2);
+                equiposCache[searchKey] = equipos;
+                equiposPageCache[searchKey] = 1;
+                return equipos;
+            }
+
+            // Try to load more items if we have cached results but might need more
+            if (equiposPageCache.TryGetValue(searchKey, out var currentPage))
+            {
+                var (moreEquipos, hasMore) = await ReporteService.SearchEquiposPaginatedAsync(value, currentPage + 1, PageSize);
+                if (moreEquipos.Any())
+                {
+                    var allEquipos = cachedEquipos.ToList();
+                    allEquipos.AddRange(moreEquipos.Where(e => !allEquipos.Any(existing => existing.Id == e.Id)));
+                    equiposCache[searchKey] = allEquipos;
+                    equiposPageCache[searchKey] = currentPage + 1;
+                    return allEquipos;
+                }
+            }
+            
+            return cachedEquipos;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al buscar equipos: {ex.Message}", Severity.Error);
+            return new List<Equipo>();
+        }
+    }
+
+    private async Task<IEnumerable<Empleado>> SearchEmpleados(string value, CancellationToken token)
+    {
+        try
+        {
+            var searchKey = string.IsNullOrWhiteSpace(value) ? "" : value.ToLowerInvariant();
+            
+            if (!empleadosCache.TryGetValue(searchKey, out var cachedEmpleados))
+            {
+                var (empleados, hasMore) = await ReporteService.SearchEmpleadosPaginatedAsync(value, 1, PageSize * 2);
+                empleadosCache[searchKey] = empleados;
+                empleadosPageCache[searchKey] = 1;
+                return empleados;
+            }
+
+            // Try to load more items if we have cached results but might need more
+            if (empleadosPageCache.TryGetValue(searchKey, out var currentPage))
+            {
+                var (moreEmpleados, hasMore) = await ReporteService.SearchEmpleadosPaginatedAsync(value, currentPage + 1, PageSize);
+                if (moreEmpleados.Any())
+                {
+                    var allEmpleados = cachedEmpleados.ToList();
+                    allEmpleados.AddRange(moreEmpleados.Where(e => !allEmpleados.Any(existing => existing.Id == e.Id)));
+                    empleadosCache[searchKey] = allEmpleados;
+                    empleadosPageCache[searchKey] = currentPage + 1;
+                    return allEmpleados;
+                }
+            }
+            
+            return cachedEmpleados;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al buscar empleados: {ex.Message}", Severity.Error);
+            return new List<Empleado>();
+        }
+    }
+
+    private bool IsFormValid()
+    {
+        if (string.IsNullOrWhiteSpace(reporteDto.Observacion) || reporteDto.Observacion.Length < 10)
+            return false;
+        
+        if (reporteDto.IdCausa <= 0)
+            return false;
+            
+        if (SelectedEquipo == null)
+            return false;
+            
+        if (SelectedEmpleado == null)
+            return false;
+            
+        return true;
+    }
+
+    private Equipo? _selectedEquipo;
+    private Equipo? SelectedEquipo
+    {
+        get => _selectedEquipo;
+        set
+        {
+            _selectedEquipo = value;
+            reporteDto.IdEquipo = value?.Id ?? 0;
+        }
+    }
+
+    private Empleado? _selectedEmpleado;
+    private Empleado? SelectedEmpleado
+    {
+        get => _selectedEmpleado;
+        set
+        {
+            _selectedEmpleado = value;
+            reporteDto.IdEmpleado = value?.Id ?? 0;
+        }
+    }
+
+    private async Task OnValidSubmit()
+    {
+        if (isSaving) return;
+
+        // Manual validation since we're not using form submit
+        if (!IsFormValid())
+        {
+            Snackbar.Add("Por favor, complete todos los campos requeridos", Severity.Warning);
+            return;
+        }
+
+        isSaving = true;
+        try
+        {
+            string? imageUrl = null;
+
+            if (selectedImageFile != null)
+            {
+                var fileName = $"reporte_{Guid.NewGuid()}.jpg";
+                using var stream = selectedImageFile.OpenReadStream();
+                imageUrl = await ReporteService.UploadImageAsync(stream, fileName, selectedImageFile.ContentType);
+            }
+
+            if (reporteDto.Id == null)
+            {
+                if (imageUrl != null)
+                {
+                    await ReporteService.CreateReporteWithImageAsync(reporteDto, imageUrl);
+                }
+                else
+                {
+                    await ReporteService.CreateReporteAsync(reporteDto);
+                }
+            }
+            else
+            {
+                if (imageUrl != null)
+                {
+                    await ReporteService.UpdateReporteWithImageAsync(reporteDto, imageUrl);
+                }
+                else
+                {
+                    await ReporteService.UpdateReporteAsync(reporteDto);
+                }
+            }
+
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al guardar reporte: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private void ClearSelectedImage()
+    {
+        selectedImageFile = null;
+        uploadedImageUrl = null;
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] Suffix = { "B", "KB", "MB", "GB", "TB" };
+        int i;
+        double dblSByte = bytes;
+        for (i = 0; i < Suffix.Length && bytes >= 1024; i++, bytes /= 1024)
+        {
+            dblSByte = bytes / 1024.0;
+        }
+
+        return String.Format("{0:0.##} {1}", dblSByte, Suffix[i]);
+    }
+}

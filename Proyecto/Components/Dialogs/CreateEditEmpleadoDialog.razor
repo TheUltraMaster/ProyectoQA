@@ -1,0 +1,544 @@
+@using BD.Models
+@using Proyecto.DTOS
+@using Proyecto.Services
+@using MudBlazor
+@using System.ComponentModel.DataAnnotations
+@using Proyecto.Mapper
+@inject IEmpleadoService EmpleadoService
+@inject ISnackbar Snackbar
+@inject Map Mapper
+
+
+<MudDialog>
+    <DialogContent>
+        <div @onclick="HandleGlobalClick">
+            <MudContainer Style="max-width: 600px;">
+            <MudForm @ref="form" @bind-IsValid="@isFormValid">
+                <MudGrid>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="model.PrimerNombre"
+                                     Label="Primer Nombre"
+                                     Variant="Variant.Outlined"
+                                     Required="true"
+                                     RequiredError="El primer nombre es obligatorio"
+                                     MaxLength="50"
+                                     Counter="50"
+                                     Validation="@(new RegularExpressionAttribute(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ]+$") { ErrorMessage = "Solo puede contener letras" })"
+                                     For="@(() => model.PrimerNombre)" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="model.SegundoNombre"
+                                     Label="Segundo Nombre"
+                                     Variant="Variant.Outlined"
+                                     RequiredError="El segundo nombre es obligatorio"
+                                     MaxLength="50"
+                                     Counter="50"
+                                     Validation="@(new RegularExpressionAttribute(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ]+$") { ErrorMessage = "Solo puede contener letras" })"
+                                     For="@(() => model.SegundoNombre)" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="model.PrimerApellido"
+                                     Label="Primer Apellido"
+                                     Variant="Variant.Outlined"
+                                     Required="true"
+                                     RequiredError="El primer apellido es obligatorio"
+                                     MaxLength="50"
+                                     Counter="50"
+                                     Validation="@(new RegularExpressionAttribute(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ]+$") { ErrorMessage = "Solo puede contener letras" })"
+                                     For="@(() => model.PrimerApellido)" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="model.SegundoApellido"
+                                     Label="Segundo Apellido"
+                                     Variant="Variant.Outlined"
+                                     RequiredError="El segundo apellido es obligatorio"
+                                     MaxLength="50"
+                                     Counter="50"
+                                     Validation="@(new RegularExpressionAttribute(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ]+$") { ErrorMessage = "Solo puede contener letras" })"
+                                     For="@(() => model.SegundoApellido)" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="string" @bind-Value="model.Estado"
+                                  Label="Estado"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="Debe seleccionar un estado"
+                                  For="@(() => model.Estado)">
+                            @foreach(var estado in estadosEmpleado)
+                            {
+                                <MudSelectItem Value="@estado">@(char.ToUpper(estado[0]) + estado.Substring(1))</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <div class="position-relative" @onclick:stopPropagation="true">
+                            <MudTextField T="string" @bind-Value="areaSearchText"
+                                         Label="Área"
+                                         Variant="Variant.Outlined"
+                                         Placeholder="Buscar área..."
+                                         @onkeyup="OnAreaSearchAsync"
+                                         @onfocus="async () => { showAreaDropdown = true; if (loadedAreas.Count == 0) await LoadMoreAreasAsync(); }"
+                                         Adornment="Adornment.End"
+                                         AdornmentIcon="@(showAreaDropdown ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                         AdornmentColor="Color.Primary"
+                                         OnAdornmentClick="async () => { showAreaDropdown = !showAreaDropdown; if (showAreaDropdown && loadedAreas.Count == 0) await LoadMoreAreasAsync(); }"
+                                         Required="false"
+                                         For="@(() => areaSearchText)" />
+                            
+                            @if (selectedArea != null)
+                            {
+                                <MudChip T="string" Class="mt-2" 
+                                        Color="Color.Primary" 
+                                        Variant="Variant.Filled"
+                                        OnClose="ClearAreaSelection">
+                                    @(selectedArea?.Nombre ?? "")
+                                </MudChip>
+                            }
+                            
+                            @if (showAreaDropdown)
+                            {
+                                <MudPaper Class="position-absolute w-100" 
+                                         Style="z-index: 1000; max-height: 300px; overflow-y: auto;"
+                                         id="area-dropdown"
+                                         @onscroll="@(async (e) => await CheckAreaScroll(e))">
+                                    <MudList T="string" Clickable="true">
+                                        @foreach (var area in loadedAreas)
+                                        {
+                                            <MudListItem T="string" Text="@area.Nombre" OnClick="() => SelectArea(area)" />
+                                        }
+                                        
+                                        @if (hasMoreAreas && isLoadingAreas)
+                                        {
+                                            <MudListItem T="string" Text="">
+                                                <div class="d-flex justify-center align-center pa-2">
+                                                    <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
+                                                    <MudText Class="ml-2">Cargando más...</MudText>
+                                                </div>
+                                            </MudListItem>
+                                        }
+                                        
+                                        @if (loadedAreas.Count == 0 && !isLoadingAreas)
+                                        {
+                                            <MudListItem T="string" Text="No se encontraron áreas" />
+                                        }
+                                    </MudList>
+                                </MudPaper>
+                            }
+                        </div>
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <div class="position-relative" @onclick:stopPropagation="true">
+                            <MudTextField T="string" @bind-Value="usuarioSearchText"
+                                         Label="Usuario (Opcional)"
+                                         Variant="Variant.Outlined"
+                                         Placeholder="Buscar usuario..."
+                                         @onkeyup="OnUsuarioSearchAsync"
+                                         @onfocus="async () => { showUsuarioDropdown = true; if (loadedUsuarios.Count == 0) await LoadMoreUsuariosAsync(); }"
+                                         Adornment="Adornment.End"
+                                         AdornmentIcon="@(showUsuarioDropdown ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                         AdornmentColor="Color.Primary"
+                                         OnAdornmentClick="async () => { showUsuarioDropdown = !showUsuarioDropdown; if (showUsuarioDropdown && loadedUsuarios.Count == 0) await LoadMoreUsuariosAsync(); }"
+                                         Required="false"
+                                         For="@(() => usuarioSearchText)" />
+                            
+                            @if (selectedUsuario != null)
+                            {
+                                <MudChip T="string" Class="mt-2" 
+                                        Color="Color.Primary" 
+                                        Variant="Variant.Filled"
+                                        OnClose="ClearUsuarioSelection">
+                                    @(selectedUsuario?.Usuario1 ?? "")
+                                </MudChip>
+                            }
+                            
+                            @if (showUsuarioDropdown)
+                            {
+                                <MudPaper Class="position-absolute w-100" 
+                                         Style="z-index: 1000; max-height: 300px; overflow-y: auto;"
+                                         id="usuario-dropdown"
+                                         @onscroll="@(async (e) => await CheckUsuarioScroll(e))">
+                                    <MudList T="string" Clickable="true">
+                                        @foreach (var usuario in loadedUsuarios)
+                                        {
+                                            <MudListItem T="string" Text="@usuario.Usuario1" OnClick="() => SelectUsuario(usuario)" />
+                                        }
+                                        
+                                        @if (hasMoreUsuarios && isLoadingUsuarios)
+                                        {
+                                            <MudListItem T="string" Text="">
+                                                <div class="d-flex justify-center align-center pa-2">
+                                                    <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
+                                                    <MudText Class="ml-2">Cargando más...</MudText>
+                                                </div>
+                                            </MudListItem>
+                                        }
+                                        
+                                        @if (loadedUsuarios.Count == 0 && !isLoadingUsuarios)
+                                        {
+                                            <MudListItem T="string" Text="No se encontraron usuarios" />
+                                        }
+                                    </MudList>
+                                </MudPaper>
+                            }
+                        </div>
+                        <MudText Typo="Typo.body2" Class="mt-1 text-muted">
+                            Solo se muestran usuarios que no tienen empleado asignado
+                        </MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+            </MudContainer>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@(!isFormValid || isSubmitting)">
+            @if (isSubmitting)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                <MudText Class="ms-2">Procesando...</MudText>
+            }
+            else
+            {
+                @(IsEditMode ? "Actualizar" : "Crear")
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    
+    [Parameter] public bool IsEditMode { get; set; } = false;
+    [Parameter] public Empleado? Empleado { get; set; }
+    
+    private MudForm form = null!;
+    private bool isFormValid;
+    private bool isSubmitting;
+    private EmpleadoDto model = new();
+    private Area? selectedArea;
+    private Usuario? selectedUsuario;
+    private int? selectedAreaId => selectedArea?.Id;
+    private int? selectedUsuarioId => selectedUsuario?.Id;
+    
+    // Pagination state for areas
+    private List<Area> loadedAreas = new();
+    private int currentAreaPage = 1;
+    private bool hasMoreAreas = true;
+    private bool isLoadingAreas = false;
+    private string currentAreaSearch = "";
+    
+    // Pagination state for users  
+    private List<Usuario> loadedUsuarios = new();
+    private int currentUsuarioPage = 1;
+    private bool hasMoreUsuarios = true;
+    private bool isLoadingUsuarios = false;
+    private string currentUsuarioSearch = "";
+    
+    // Dropdown state
+    private bool showAreaDropdown = false;
+    private bool showUsuarioDropdown = false;
+    private string areaSearchText = "";
+    private string usuarioSearchText = "";
+    private List<string> estadosEmpleado = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        estadosEmpleado = EmpleadoService.GetEstadosEmpleado();
+        
+        if (IsEditMode && Empleado != null)
+        {
+            model = Mapper.toDto(Empleado);
+            model.Estado = Empleado.Estado ?? "activo";
+            
+            if (Empleado.IdArea.HasValue)
+            {
+                selectedArea = await GetAreaByIdAsync(Empleado.IdArea.Value);
+                if (selectedArea != null)
+                {
+                    areaSearchText = selectedArea.Nombre;
+                }
+            }
+            
+            if (Empleado.IdUsuario.HasValue)
+            {
+                selectedUsuario = await GetUsuarioByIdAsync(Empleado.IdUsuario.Value);
+                if (selectedUsuario != null)
+                {
+                    usuarioSearchText = selectedUsuario.Usuario1;
+                }
+            }
+        }
+        else
+        {
+            model.Estado = "activo";
+        }
+    }
+
+    private async Task<Area?> GetAreaByIdAsync(int areaId)
+    {
+        try
+        {
+            var areas = await EmpleadoService.GetAreasAsync();
+            return areas.FirstOrDefault(a => a.Id == areaId);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar área: {ex.Message}", Severity.Error);
+            return null;
+        }
+    }
+
+    private async Task<Usuario?> GetUsuarioByIdAsync(int usuarioId)
+    {
+        try
+        {
+            List<Usuario> usuarios;
+            if (IsEditMode && Empleado != null)
+            {
+                usuarios = await EmpleadoService.GetUsuariosDisponiblesAsync(Empleado.Id);
+            }
+            else
+            {
+                usuarios = await EmpleadoService.GetUsuariosDisponiblesAsync();
+            }
+            return usuarios.FirstOrDefault(u => u.Id == usuarioId);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar usuario: {ex.Message}", Severity.Error);
+            return null;
+        }
+    }
+
+    private async Task OnAreaSearchAsync()
+    {
+        if (areaSearchText != currentAreaSearch)
+        {
+            currentAreaSearch = areaSearchText;
+            currentAreaPage = 1;
+            loadedAreas.Clear();
+            hasMoreAreas = true;
+            await LoadMoreAreasAsync();
+        }
+    }
+
+    private void SelectArea(Area area)
+    {
+        selectedArea = area;
+        areaSearchText = area.Nombre;
+        showAreaDropdown = false;
+        StateHasChanged();
+    }
+
+    private async Task CheckAreaScroll(EventArgs e)
+    {
+        if (hasMoreAreas && !isLoadingAreas)
+        {
+            await LoadMoreAreasAsync();
+        }
+    }
+
+    private async Task LoadMoreAreasAsync()
+    {
+        if (isLoadingAreas || !hasMoreAreas) return;
+        
+        isLoadingAreas = true;
+        StateHasChanged();
+        
+        try
+        {
+            var result = await EmpleadoService.GetAreasPagedAsync(currentAreaPage, 10, 
+                string.IsNullOrEmpty(currentAreaSearch) ? null : currentAreaSearch);
+            
+            if (result.Areas.Count > 0)
+            {
+                loadedAreas.AddRange(result.Areas);
+                currentAreaPage++;
+                
+                // Check if there are more items
+                hasMoreAreas = loadedAreas.Count < result.TotalCount;
+            }
+            else
+            {
+                hasMoreAreas = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar más áreas: {ex.Message}", Severity.Error);
+            hasMoreAreas = false;
+        }
+        finally
+        {
+            isLoadingAreas = false;
+            StateHasChanged();
+        }
+    }
+
+
+    private async Task OnUsuarioSearchAsync()
+    {
+        if (usuarioSearchText != currentUsuarioSearch)
+        {
+            currentUsuarioSearch = usuarioSearchText;
+            currentUsuarioPage = 1;
+            loadedUsuarios.Clear();
+            hasMoreUsuarios = true;
+            await LoadMoreUsuariosAsync();
+        }
+    }
+
+    private void SelectUsuario(Usuario usuario)
+    {
+        selectedUsuario = usuario;
+        usuarioSearchText = usuario.Usuario1;
+        showUsuarioDropdown = false;
+        StateHasChanged();
+    }
+
+    private async Task CheckUsuarioScroll(EventArgs e)
+    {
+        if (hasMoreUsuarios && !isLoadingUsuarios)
+        {
+            await LoadMoreUsuariosAsync();
+        }
+    }
+
+    private async Task LoadMoreUsuariosAsync()
+    {
+        if (isLoadingUsuarios || !hasMoreUsuarios) return;
+        
+        isLoadingUsuarios = true;
+        StateHasChanged();
+        
+        try
+        {
+            var result = IsEditMode && Empleado != null
+                ? await EmpleadoService.GetUsuariosDisponiblesPagedAsync(Empleado.Id, currentUsuarioPage, 10, 
+                    string.IsNullOrEmpty(currentUsuarioSearch) ? null : currentUsuarioSearch)
+                : await EmpleadoService.GetUsuariosDisponiblesPagedAsync(currentUsuarioPage, 10, 
+                    string.IsNullOrEmpty(currentUsuarioSearch) ? null : currentUsuarioSearch);
+            
+            if (result.Usuarios.Count > 0)
+            {
+                loadedUsuarios.AddRange(result.Usuarios);
+                currentUsuarioPage++;
+                
+                // Check if there are more items
+                hasMoreUsuarios = loadedUsuarios.Count < result.TotalCount;
+            }
+            else
+            {
+                hasMoreUsuarios = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar más usuarios: {ex.Message}", Severity.Error);
+            hasMoreUsuarios = false;
+        }
+        finally
+        {
+            isLoadingUsuarios = false;
+            StateHasChanged();
+        }
+    }
+
+
+    private async Task Submit()
+    {
+        if (!isFormValid) return;
+        
+        // Assign the selected area and user IDs to the model
+        model.IdArea = selectedArea?.Id;
+        model.IdUsuario = selectedUsuario?.Id;
+
+        isSubmitting = true;
+        try
+        {
+            if (IsEditMode && Empleado != null)
+            {
+                var result = await EmpleadoService.UpdateEmpleadoAsync(Empleado.Id, model);
+                if (result != null)
+                {
+                    Snackbar.Add("Empleado actualizado correctamente", Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(result));
+                }
+                else
+                {
+                    Snackbar.Add("No se pudo actualizar el empleado", Severity.Error);
+                }
+            }
+            else
+            {
+                var result = await EmpleadoService.CreateEmpleadoAsync(model);
+                Snackbar.Add("Empleado creado correctamente", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(result));
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al {(IsEditMode ? "actualizar" : "crear")} empleado: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void ClearAreaSelection()
+    {
+        try
+        {
+            selectedArea = null;
+            areaSearchText = string.Empty;
+            currentAreaSearch = "";
+            showAreaDropdown = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al limpiar selección de área: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void ClearUsuarioSelection()
+    {
+        try
+        {
+            selectedUsuario = null;
+            usuarioSearchText = string.Empty;
+            currentUsuarioSearch = "";
+            showUsuarioDropdown = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al limpiar selección de usuario: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void HandleGlobalClick(MouseEventArgs e)
+    {
+        // This is a simple approach - in a real implementation, you'd check if the click was outside the dropdown
+        // For now, we'll just close the dropdowns when clicking elsewhere
+        if (showAreaDropdown || showUsuarioDropdown)
+        {
+            showAreaDropdown = false;
+            showUsuarioDropdown = false;
+            StateHasChanged();
+        }
+    }
+}

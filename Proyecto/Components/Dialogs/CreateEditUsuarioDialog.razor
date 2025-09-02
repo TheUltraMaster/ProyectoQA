@@ -3,8 +3,10 @@
 @using Proyecto.Services
 @using MudBlazor
 @using System.ComponentModel.DataAnnotations
+@using Proyecto.Mapper
 @inject IUsuarioService UsuarioService
 @inject ISnackbar Snackbar
+@inject Map Mapper
 
 <MudDialog>
     <DialogContent>
@@ -123,14 +125,8 @@
         
         if (IsEditMode && Usuario != null)
         {
-            model = new UsuarioDto
-            {
-                Id = Usuario.Id,
-                Usuario = Usuario.Usuario1,
-                Password = string.Empty, // No pre-cargar la contraseña por seguridad
-                IsAdmin = Usuario.IsAdmin,
-                Activo = Usuario.Activo == 1UL
-            };
+            model = Mapper.toDto(Usuario);
+            model.Password = string.Empty; // No pre-cargar la contraseña por seguridad
             confirmPassword = string.Empty;
         }
         else

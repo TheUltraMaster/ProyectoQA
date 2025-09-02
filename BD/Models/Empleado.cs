@@ -22,7 +22,7 @@ public partial class Empleado
 
     [Column("segundo_nombre")]
     [StringLength(50)]
-    public string SegundoNombre { get; set; } = null!;
+    public string? SegundoNombre { get; set; }
 
     [Column("primer_apellido")]
     [StringLength(50)]
@@ -30,7 +30,7 @@ public partial class Empleado
 
     [Column("segundo_apellido")]
     [StringLength(50)]
-    public string SegundoApellido { get; set; } = null!;
+    public string? SegundoApellido { get; set; }
 
     [Column("id_usuario", TypeName = "int(11)")]
     public int? IdUsuario { get; set; }

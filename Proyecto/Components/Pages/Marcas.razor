@@ -1,31 +1,30 @@
-@page "/usuarios"
-@attribute [Authorize(Policy="AdminOnly")]
+@page "/marcas"
 @rendermode InteractiveServer
+@attribute [Authorize(Policy="AdminOnly")]
 @using BD.Models
 @using Proyecto.DTOS
 @using Proyecto.Services
-@using System.ComponentModel.DataAnnotations
 @using Proyecto.Components.Dialogs
-@inject IUsuarioService UsuarioService
-@inject IEmpleadoService EmpleadoService
+@using System.ComponentModel.DataAnnotations
+@inject IMarcaService MarcaService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 
-<PageTitle>Gestión de Usuarios</PageTitle>
+<PageTitle>Gestión de Marcas</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge">
-    <MudText Typo="Typo.h4" Class="mb-4">Gestión de Usuarios</MudText>
+    <MudText Typo="Typo.h4" Class="mb-4">Gestión de Marcas</MudText>
 
     <MudCard Class="mb-4">
         <MudCardContent>
             <MudGrid>
                 <MudItem xs="12" md="4">
                     <MudTextField @bind-Value="searchTerm" 
-                                  Label="Buscar por nombre o usuario" 
+                                  Label="Buscar por nombre" 
                                   Variant="Variant.Outlined" 
                                   Adornment="Adornment.End"
                                   AdornmentIcon="Icons.Material.Filled.Search"
-                                  OnAdornmentClick="SearchUsuarios"
+                                  OnAdornmentClick="SearchMarcas"
                                   OnKeyUp="OnSearchKeyUp" />
                 </MudItem>
                 <MudItem xs="12" md="2">
@@ -44,7 +43,7 @@
                         <MudButton Variant="Variant.Filled" 
                                    Color="Color.Primary" 
                                    StartIcon="Icons.Material.Filled.Search"
-                                   OnClick="SearchUsuarios">
+                                   OnClick="SearchMarcas">
                             Buscar
                         </MudButton>
                         <MudButton Variant="Variant.Outlined" 
@@ -57,10 +56,10 @@
                     </div>
                     <MudButton Variant="Variant.Filled" 
                                Color="Color.Success" 
-                               StartIcon="Icons.Material.Filled.PersonAdd"
-                               OnClick="OpenCreateUserDialog"
+                               StartIcon="Icons.Material.Filled.Add"
+                               OnClick="OpenCreateMarcaDialog"
                                Class="ml-4">
-                        Nuevo Usuario
+                        Nueva Marca
                     </MudButton>
                 </MudItem>
             </MudGrid>
@@ -77,73 +76,34 @@
             {
                 <div class="mb-3 d-flex justify-space-between align-center">
                     <MudText Typo="Typo.h6">
-                        Mostrando @GetDisplayRange() de @totalUsers usuarios
+                        Mostrando @GetDisplayRange() de @totalMarcas marcas
                     </MudText>
                     <MudText Typo="Typo.body2" Class="text-muted">
                         Página @currentPage de @totalPages
                     </MudText>
                 </div>
                 
-                <MudTable Items="@usuarios" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm">
+                <MudTable Items="@marcas" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm">
                     <HeaderContent>
-                        <MudTh>Usuario</MudTh>
-                        <MudTh>Empleado</MudTh>
-                        <MudTh>Admin</MudTh>
-                        <MudTh>Estado</MudTh>
-                        <MudTh>Fecha Creación</MudTh>
+                        <MudTh>Nombre</MudTh>
+                        <MudTh>Equipos Asociados</MudTh>
                         <MudTh>Acciones</MudTh>
                     </HeaderContent>
                     <RowTemplate>
-                        <MudTd DataLabel="Usuario">@context.Usuario1</MudTd>
-                        <MudTd DataLabel="Empleado">
-                            @if (context.Empleado != null)
-                            {
-                                <text>@context.Empleado.PrimerNombre @context.Empleado.PrimerApellido</text>
-                            }
-                            else
-                            {
-                                <text>Sin empleado</text>
-                            }
-                        </MudTd>
-                        <MudTd DataLabel="Admin">
-                            <MudChip T="string" Color="@(context.IsAdmin ? Color.Success : Color.Default)" 
-                                     Size="Size.Small">
-                                @(context.IsAdmin ? "Sí" : "No")
+                        <MudTd DataLabel="Nombre">@context.Nombre</MudTd>
+                        <MudTd DataLabel="Equipos Asociados">
+                            <MudChip T="string" Color="Color.Info" Size="Size.Small">
+                                @context.Equipos.Count equipos
                             </MudChip>
                         </MudTd>
-                        <MudTd DataLabel="Estado">
-                            <MudChip T="string" Color="@(context.Activo == 1 ? Color.Success : Color.Error)" 
-                                     Size="Size.Small">
-                                @(context.Activo == 1 ? "Activo" : "Inactivo")
-                            </MudChip>
-                        </MudTd>
-                        <MudTd DataLabel="Fecha Creación">@context.FechaCommit?.ToString("dd/MM/yyyy")</MudTd>
                         <MudTd DataLabel="Acciones">
                             <MudButtonGroup Variant="Variant.Outlined" Size="Size.Small">
                                 <MudButton Color="Color.Primary" 
                                            StartIcon="Icons.Material.Filled.Edit"
-                                           OnClick="() => OpenEditUserDialog(context)"
+                                           OnClick="() => OpenEditMarcaDialog(context)"
                                            Size="Size.Small">
                                     Editar
                                 </MudButton>
-                                @if (context.Activo == 1)
-                                {
-                                    <MudButton Color="Color.Warning" 
-                                               StartIcon="Icons.Material.Filled.Block"
-                                               OnClick="() => DeactivateUser(context.Id)"
-                                               Size="Size.Small">
-                                        Desactivar
-                                    </MudButton>
-                                }
-                                else
-                                {
-                                    <MudButton Color="Color.Success" 
-                                               StartIcon="Icons.Material.Filled.CheckCircle"
-                                               OnClick="() => ActivateUser(context.Id)"
-                                               Size="Size.Small">
-                                        Activar
-                                    </MudButton>
-                                }
                             </MudButtonGroup>
                         </MudTd>
                     </RowTemplate>
@@ -167,20 +127,16 @@
     </MudCard>
 </MudContainer>
 
-
-
 @code {
-    private List<Usuario> usuarios = new();
+    private List<Marca> marcas = new();
     private bool isLoading = true;
     private string searchTerm = "";
     
     // Pagination
     private int currentPage = 1;
     private int pageSize = 10;
-    private int totalUsers = 0;
+    private int totalMarcas = 0;
     private int totalPages = 0;
-    
-    
     
     private DialogOptions dialogOptions = new()
     {
@@ -191,15 +147,15 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadUsuarios();
+        await LoadMarcas();
     }
 
-    private async Task LoadUsuarios()
+    private async Task LoadMarcas()
     {
         await RefreshCurrentView();
     }
 
-    private async Task SearchUsuarios()
+    private async Task SearchMarcas()
     {
         currentPage = 1; // Reset to first page when searching
         await RefreshCurrentView();
@@ -209,7 +165,7 @@
     {
         searchTerm = "";
         currentPage = 1;
-        await LoadUsuarios();
+        await LoadMarcas();
     }
     
     private async Task OnPageChanged(int page)
@@ -230,65 +186,21 @@
             await RefreshCurrentView();
         }
     }
-    
 
     private async Task OnSearchKeyUp(KeyboardEventArgs e)
     {
         if (e.Key == "Enter")
         {
-            await SearchUsuarios();
+            await SearchMarcas();
         }
     }
-
-    private async Task ActivateUser(int userId)
-    {
-        try
-        {
-            var success = await UsuarioService.ActivateUserAsync(userId);
-            if (success)
-            {
-                Snackbar.Add("Usuario activado correctamente", Severity.Success);
-                await RefreshCurrentView();
-            }
-            else
-            {
-                Snackbar.Add("No se pudo activar el usuario", Severity.Error);
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error al activar usuario: {ex.Message}", Severity.Error);
-        }
-    }
-
-    private async Task DeactivateUser(int userId)
-    {
-        try
-        {
-            var success = await UsuarioService.DeactivateUserAsync(userId);
-            if (success)
-            {
-                Snackbar.Add("Usuario desactivado correctamente", Severity.Success);
-                await RefreshCurrentView();
-            }
-            else
-            {
-                Snackbar.Add("No se pudo desactivar el usuario", Severity.Error);
-            }
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error al desactivar usuario: {ex.Message}", Severity.Error);
-        }
-    }
-
     
     private string GetDisplayRange()
     {
-        if (totalUsers == 0) return "0";
+        if (totalMarcas == 0) return "0";
         
         var start = (currentPage - 1) * pageSize + 1;
-        var end = Math.Min(currentPage * pageSize, totalUsers);
+        var end = Math.Min(currentPage * pageSize, totalMarcas);
         
         return $"{start}-{end}";
     }
@@ -298,14 +210,14 @@
         isLoading = true;
         try
         {
-            var result = await UsuarioService.SearchUsuariosByNameAsync(searchTerm ?? "", currentPage, pageSize);
-            usuarios = result.usuarios;
-            totalUsers = result.totalCount;
-            totalPages = (int)Math.Ceiling((double)totalUsers / pageSize);
+            var result = await MarcaService.GetMarcasPagedAsync(currentPage, pageSize, searchTerm);
+            marcas = result.Marcas;
+            totalMarcas = result.TotalCount;
+            totalPages = (int)Math.Ceiling((double)totalMarcas / pageSize);
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error al cargar usuarios: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Error al cargar marcas: {ex.Message}", Severity.Error);
         }
         finally
         {
@@ -313,34 +225,35 @@
         }
     }
     
-    // Create User Methods
-    private async Task OpenCreateUserDialog()
+    // Create Marca Methods
+    private async Task OpenCreateMarcaDialog()
     {
         var parameters = new DialogParameters();
         parameters.Add("IsEditMode", false);
 
-        var dialog = await DialogService.ShowAsync<CreateEditUsuarioDialog>("Crear Nuevo Usuario", parameters);
+        var dialog = await DialogService.ShowAsync<CreateEditMarcaDialog>("Crear Nueva Marca", parameters, dialogOptions);
         var result = await dialog.Result;
 
-        if (!result.Canceled && result.Data != null)
+        if (!result.Canceled)
         {
             await RefreshCurrentView();
         }
     }
     
-    // Edit User Methods
-    private async Task OpenEditUserDialog(Usuario usuario)
+    // Edit Marca Methods
+    private async Task OpenEditMarcaDialog(Marca marca)
     {
         var parameters = new DialogParameters();
         parameters.Add("IsEditMode", true);
-        parameters.Add("Usuario", usuario);
+        parameters.Add("Marca", marca);
 
-        var dialog = await DialogService.ShowAsync<CreateEditUsuarioDialog>($"Editar Usuario - {usuario.Usuario1}", parameters);
+        var dialog = await DialogService.ShowAsync<CreateEditMarcaDialog>($"Editar Marca - {marca.Nombre}", parameters, dialogOptions);
         var result = await dialog.Result;
 
-        if (!result.Canceled && result.Data != null)
+        if (!result.Canceled)
         {
             await RefreshCurrentView();
         }
     }
+
 }

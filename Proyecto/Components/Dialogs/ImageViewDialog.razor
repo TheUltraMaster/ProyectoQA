@@ -1,0 +1,50 @@
+@using Proyecto.DTOS
+
+<MudDialog>
+    <DialogContent>
+        <MudContainer Style="max-width: 100%; max-height: 80vh;">
+            <div class="d-flex justify-center align-center" style="min-height: 400px;">
+                @if (!string.IsNullOrEmpty(ImageUrl))
+                {
+                    <MudImage Src="@ImageUrl" 
+                            Alt="Imagen del reporte"
+                            Fluid="true"
+                            ObjectFit="ObjectFit.Contain"
+                            Style="max-height: 70vh; max-width: 100%;" />
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Error">
+                        No se pudo cargar la imagen
+                    </MudAlert>
+                }
+            </div>
+        </MudContainer>
+    </DialogContent>
+    
+    <DialogActions>
+        <MudButton OnClick="Close">Cerrar</MudButton>
+        @if (!string.IsNullOrEmpty(ImageUrl))
+        {
+            <MudButton Color="Color.Primary" 
+                      Variant="Variant.Filled"
+                      Href="@ImageUrl"
+                      Target="_blank">
+                Abrir en nueva pestaña
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] 
+    IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] 
+    public string ImageUrl { get; set; } = string.Empty;
+
+    private void Close()
+    {
+        MudDialog.Close();
+    }
+}

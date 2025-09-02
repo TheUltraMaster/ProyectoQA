@@ -6,9 +6,9 @@ public class CausaDto
 {
     public int? Id { get; set; }
 
-    [Required(ErrorMessage = "El nombre de la causa es obligatorio")]
+    [Required(ErrorMessage = "El nombre es obligatorio")]
     [StringLength(50, ErrorMessage = "El nombre no puede exceder los 50 caracteres")]
-    [RegularExpression(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\-_]+$", ErrorMessage = "El nombre solo puede contener letras, espacios, guiones y guiones bajos")]
+    [RegularExpression(@"^[A-ZÁÉÍÓÚÑ\s]+$", ErrorMessage = "El nombre debe estar en mayúsculas y solo puede contener letras y espacios")]
     public string Nombre { get; set; } = string.Empty;
 
     [StringLength(300, ErrorMessage = "La descripción no puede exceder los 300 caracteres")]

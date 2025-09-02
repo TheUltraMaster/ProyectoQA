@@ -7,22 +7,30 @@
         <MudNavMenu>
             <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Inicio</MudNavLink>
             
+            <MudNavGroup Text="Gestión" Icon="@Icons.Material.Filled.Inventory" Expanded="false">
+                <MudNavLink Href="/equipos" Icon="@Icons.Material.Filled.Devices">Equipos</MudNavLink>
+                <MudNavLink Href="/reportes" Icon="@Icons.Material.Filled.Assignment">Reportes</MudNavLink>
+                <MudNavLink Href="/bitacora-equipos" Icon="@Icons.Material.Filled.History">Bitácora de Equipos</MudNavLink>
+            </MudNavGroup>
+            
             <MudNavGroup Text="Administración" Icon="@Icons.Material.Filled.Settings" Expanded="false">
                 <MudNavLink Href="/usuarios" Icon="@Icons.Material.Filled.People">Usuarios</MudNavLink>
                 <MudNavLink Href="/empleados" Icon="@Icons.Material.Filled.Badge">Empleados</MudNavLink>
                 <MudNavLink Href="/areas" Icon="@Icons.Material.Filled.BusinessCenter">Áreas</MudNavLink>
+                <MudNavLink Href="/marcas" Icon="@Icons.Material.Filled.Label">Marcas</MudNavLink>
+                <MudNavLink Href="/causas" Icon="@Icons.Material.Filled.ReportProblem">Causas</MudNavLink>
             </MudNavGroup>
             
             <MudDivider />
             
             <MudNavGroup Text="Usuario" Icon="@Icons.Material.Filled.Person" Expanded="false">
                 <MudNavLink Icon="@Icons.Material.Filled.AccountCircle">
-                    @context.User.Identity?.Name
+                    @($"{context.User.Identity?.Name}")
                 </MudNavLink>
                 <div class="nav-item px-3">
                     <form method="post" action="/api/auth/logout">
                         <button type="submit" class="nav-link btn btn-link text-start">
-                            <span class="bi bi-box-arrow-right" aria-hidden="true"></span> Logout
+                            <MudIcon Icon="@Icons.Material.Filled.Logout" /> Logout
                         </button>
                     </form>
                 </div>

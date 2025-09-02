@@ -14,4 +14,5 @@ public interface IAreaService
     Task<bool> AreaExistsAsync(int id);
     Task<bool> AreaNameExistsAsync(string nombre, int? excludeId = null);
     Task<List<Usuario>> GetUsuariosAsync();
+    Task<(List<Usuario> usuarios, int totalCount)> GetUsuariosPaginadosAsync(int page, int pageSize, string? search = null);
 }

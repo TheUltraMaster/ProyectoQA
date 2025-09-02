@@ -60,11 +60,10 @@ namespace Proyecto.Services
             var existingUsuario = await _context.Usuarios.FindAsync(id);
             if (existingUsuario == null) return null;
 
-            // Usar el mapper para actualizar las propiedades básicas
             var updatedUsuario = _mapper.toEntity(usuarioDto);
             existingUsuario.Usuario1 = updatedUsuario.Usuario1;
             existingUsuario.IsAdmin = updatedUsuario.IsAdmin;
-            existingUsuario.Activo = updatedUsuario.Activo; // El mapper ya maneja la conversión bool -> ulong
+            existingUsuario.Activo = updatedUsuario.Activo;
 
             // Solo actualizar contraseña si se proporciona una nueva
             if (!string.IsNullOrWhiteSpace(usuarioDto.Password))
@@ -103,6 +102,33 @@ namespace Proyecto.Services
                 .OrderBy(e => e.PrimerNombre)
                 .ThenBy(e => e.PrimerApellido)
                 .ToListAsync();
+        }
+
+        public async Task<(List<Empleado> empleados, int totalCount)> GetEmpleadosDisponiblesPaginadosAsync(int page, int pageSize, string? search = null)
+        {
+            var query = _context.Empleados
+                .Include(e => e.IdAreaNavigation)
+                .Include(e => e.IdUsuarioNavigation)
+                .Where(e => e.IdUsuarioNavigation.Usuario1 == "sin_asignar");
+
+            if (!string.IsNullOrEmpty(search))
+            {
+                query = query.Where(e => 
+                    (e.PrimerNombre != null && e.PrimerNombre.Contains(search)) ||
+                    (e.PrimerApellido != null && e.PrimerApellido.Contains(search)) ||
+                    (e.IdAreaNavigation != null && e.IdAreaNavigation.Nombre.Contains(search)));
+            }
+
+            var totalCount = await query.CountAsync();
+
+            var empleados = await query
+                .OrderBy(e => e.PrimerNombre)
+                .ThenBy(e => e.PrimerApellido)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (empleados, totalCount);
         }
 
         public async Task<bool> UsuarioExistsAsync(string usuario, int? excludeId = null)

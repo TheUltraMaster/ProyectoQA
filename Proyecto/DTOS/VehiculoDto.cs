@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Proyecto.Attributes;
 
 namespace Proyecto.DTOS;
 
@@ -23,7 +24,7 @@ public class VehiculoDto
     public string Placa { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "El modelo es obligatorio")]
-    [Range(1900, 2100, ErrorMessage = "El modelo debe estar entre 1900 y 2100")]
+    [YearRange(1980)]
     public int Modelo { get; set; }
 
     [Required(ErrorMessage = "El ID del equipo es obligatorio")]

@@ -11,6 +11,7 @@ namespace Proyecto.Services
         Task<Usuario?> UpdateUsuarioAsync(int id, UsuarioDto usuarioDto);
         Task<bool> DeleteUsuarioAsync(int id);
         Task<List<Empleado>> GetEmpleadosDisponiblesAsync();
+        Task<(List<Empleado> empleados, int totalCount)> GetEmpleadosDisponiblesPaginadosAsync(int page, int pageSize, string? search = null);
         Task<bool> UsuarioExistsAsync(string usuario, int? excludeId = null);
         Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword);
         Task<Usuario?> AuthenticateAsync(string usuario, string password);

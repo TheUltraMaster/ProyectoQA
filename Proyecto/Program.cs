@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Bycript;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication;
+using Minio;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -47,12 +48,33 @@ builder.Services.AddAuthorizationBuilder()
     .AddPolicy("AdminOnly", policy => policy.RequireRole("Administrador"))
     .AddPolicy("UserOnly", policy => policy.RequireRole("Usuario", "Administrador"));
 
+// MinIO client configuration
+builder.Services.AddScoped<IMinioClient>(provider =>
+{
+    return new MinioClient()
+        .WithEndpoint("localhost", 9000)
+        .WithCredentials("minioadmin", "minioadmin")
+        .Build();
+});
+
+// Custom MinIO service
+builder.Services.AddScoped<Bucket.IMinioService>(provider =>
+{
+    var minioClient = provider.GetRequiredService<IMinioClient>();
+    return new Bucket.MinioService(minioClient, "localhost", 9000, false);
+});
+
 // Registrar servicios
 builder.Services.AddScoped<IBCryptService, BCryptService>();
 builder.Services.AddScoped<Proyecto.Mapper.Map>();
 builder.Services.AddScoped<Proyecto.Services.IUsuarioService, Proyecto.Services.UsuarioService>();
 builder.Services.AddScoped<Proyecto.Services.IEmpleadoService, Proyecto.Services.EmpleadoService>();
 builder.Services.AddScoped<Proyecto.Services.IAreaService, Proyecto.Services.AreaService>();
+builder.Services.AddScoped<Proyecto.Services.IEquipoService, Proyecto.Services.EquipoService>();
+builder.Services.AddScoped<Proyecto.Services.IMarcaService, Proyecto.Services.MarcaService>();
+builder.Services.AddScoped<Proyecto.Services.ICausaService, Proyecto.Services.CausaService>();
+builder.Services.AddScoped<Proyecto.Services.IReporteService, Proyecto.Services.ReporteService>();
+builder.Services.AddScoped<Proyecto.Services.IBitacoraEquipoService, Proyecto.Services.BitacoraEquipoService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddHttpClient();
@@ -120,6 +142,7 @@ app.MapPost("/api/auth/logout", async (HttpContext context) =>
 
 
 
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
@@ -128,12 +151,18 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ProyectoContext>();
     var bcryptService = scope.ServiceProvider.GetRequiredService<IBCryptService>();
-    
+
     // Asegurar que la base de datos esté creada
+    
     context.Database.EnsureCreated();
     
     // Ejecutar datos semilla
     await Proyecto.Data.SeedData.SeedUsuarios(context, bcryptService);
+    
+    // Imprimir valores del enum TipoAlimentacion
+    var tiposAlimentacion = BD.Models.EnumExtensions.GetAllDescriptions<BD.Models.TipoAlimentacion>();
+        
+
 }
 
 app.Run();

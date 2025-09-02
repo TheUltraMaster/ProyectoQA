@@ -6,7 +6,7 @@
 @using System.Globalization
 @using System.Text
 @using Proyecto.Mapper
-@inject IAreaService AreaService
+@inject IMarcaService MarcaService
 @inject ISnackbar Snackbar
 @inject Map Mapper
 
@@ -17,13 +17,13 @@
                 <MudGrid>
                     <MudItem xs="12">
                         <MudTextField @bind-Value="model.Nombre"
-                                     Label="Nombre del Área"
+                                     Label="Nombre de la Marca"
                                      Variant="Variant.Outlined"
                                      Required="true"
-                                     RequiredError="El nombre del área es obligatorio"
+                                     RequiredError="El nombre de la marca es obligatorio"
                                      MaxLength="50"
                                      Counter="50"
-                                     Validation="@(new RegularExpressionAttribute(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$") { ErrorMessage = "El nombre solo puede contener letras y espacios" })"
+                                     Validation="@(new RegularExpressionAttribute(@"^[A-ZÁÉÍÓÚÑ\s]+$") { ErrorMessage = "El nombre solo puede contener letras mayúsculas y espacios" })"
                                      For="@(() => model.Nombre)"
                                      @onblur="OnNameChanged" />
                         @if (!string.IsNullOrEmpty(normalizedNamePreview) && normalizedNamePreview != model.Nombre)
@@ -37,25 +37,9 @@
                         {
                             <MudText Typo="Typo.body2" Class="mt-2" Color="Color.Error">
                                 <MudIcon Icon="Icons.Material.Filled.Error" Size="Size.Small" Class="mr-1" />
-                                Ya existe un área con este nombre
+                                Ya existe una marca con este nombre
                             </MudText>
                         }
-                    </MudItem>
-
-                    <MudItem xs="12">
-                        <MudSelect T="int?" 
-                                   @bind-Value="selectedUsuarioId"
-                                   Label="Usuario Responsable"
-                                   Placeholder="-- Seleccionar Usuario --"
-                                   Required="true"
-                                   RequiredError="Debe seleccionar un usuario responsable"
-                                   Validation="@(new Func<int?, IEnumerable<string>>(ValidateUsuarioSelection))"
-                                   Variant="Variant.Outlined">
-                            @foreach (var usuario in availableUsuarios)
-                            {
-                                <MudSelectItem T="int?" Value="@((int?)usuario.Id)">@usuario.Usuario1</MudSelectItem>
-                            }
-                        </MudSelect>
                     </MudItem>
                 </MudGrid>
             </MudForm>
@@ -84,84 +68,53 @@
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
     
     [Parameter] public bool IsEditMode { get; set; } = false;
-    [Parameter] public Area? Area { get; set; }
+    [Parameter] public Marca? Marca { get; set; }
     
     private MudForm form = null!;
     private bool isFormValid;
     private bool isSubmitting;
-    private AreaDto model = new();
+    private MarcaDto model = new();
     private string normalizedNamePreview = string.Empty;
     private bool nameExistsError = false;
-    private int? selectedUsuarioId;
-    private List<Usuario> availableUsuarios = new();
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadUsuarios();
-        
-        if (IsEditMode && Area != null)
+        if (IsEditMode && Marca != null)
         {
-            model = Mapper.toDto(Area);
-            selectedUsuarioId = Area.IdUsuario;
+            model = Mapper.toDto(Marca);
         }
     }
-
-    private async Task LoadUsuarios()
-    {
-        try
-        {
-            var result = await AreaService.GetUsuariosPaginadosAsync(1, 100, null);
-            availableUsuarios = result.usuarios;
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Error al cargar usuarios: {ex.Message}", Severity.Error);
-            availableUsuarios = new List<Usuario>();
-        }
-    }
-
 
     private async Task Submit()
     {
         if (!isFormValid) return;
-        
-        // Assign the selected user ID to the model
-        if (selectedUsuarioId.HasValue)
-        {
-            model.IdUsuario = selectedUsuarioId.Value;
-        }
-        else
-        {
-            Snackbar.Add("Debe seleccionar un usuario responsable", Severity.Error);
-            return;
-        }
 
         isSubmitting = true;
         try
         {
-            if (IsEditMode && Area != null)
+            if (IsEditMode && Marca != null)
             {
-                var result = await AreaService.UpdateAreaAsync(Area.Id, model);
+                var result = await MarcaService.UpdateMarcaAsync(Marca.Id, model);
                 if (result != null)
                 {
-                    Snackbar.Add("Área actualizada correctamente", Severity.Success);
+                    Snackbar.Add("Marca actualizada correctamente", Severity.Success);
                     MudDialog.Close(DialogResult.Ok(result));
                 }
                 else
                 {
-                    Snackbar.Add("No se pudo actualizar el área", Severity.Error);
+                    Snackbar.Add("No se pudo actualizar la marca", Severity.Error);
                 }
             }
             else
             {
-                var result = await AreaService.CreateAreaAsync(model);
-                Snackbar.Add("Área creada correctamente", Severity.Success);
+                var result = await MarcaService.CreateMarcaAsync(model);
+                Snackbar.Add("Marca creada correctamente", Severity.Success);
                 MudDialog.Close(DialogResult.Ok(result));
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error al {(IsEditMode ? "actualizar" : "crear")} área: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Error al {(IsEditMode ? "actualizar" : "crear")} marca: {ex.Message}", Severity.Error);
         }
         finally
         {
@@ -180,13 +133,13 @@
             return;
         }
 
-        normalizedNamePreview = NormalizeAreaName(model.Nombre);
+        normalizedNamePreview = NormalizeMarcaName(model.Nombre);
         
         // Check if name exists
         try
         {
-            var excludeId = IsEditMode && Area != null ? Area.Id : (int?)null;
-            nameExistsError = await AreaService.AreaNameExistsAsync(normalizedNamePreview, excludeId);
+            var excludeId = IsEditMode && Marca != null ? Marca.Id : (int?)null;
+            nameExistsError = await MarcaService.MarcaNameExistsAsync(normalizedNamePreview, excludeId);
         }
         catch
         {
@@ -196,7 +149,7 @@
         StateHasChanged();
     }
 
-    private static string NormalizeAreaName(string nombre)
+    private static string NormalizeMarcaName(string nombre)
     {
         if (string.IsNullOrEmpty(nombre))
             return string.Empty;
@@ -218,13 +171,5 @@
         }
         
         return stringBuilder.ToString().Normalize(NormalizationForm.FormC);
-    }
-
-    private IEnumerable<string> ValidateUsuarioSelection(int? value)
-    {
-        if (!value.HasValue)
-        {
-            yield return "Debe seleccionar un usuario responsable";
-        }
     }
 }

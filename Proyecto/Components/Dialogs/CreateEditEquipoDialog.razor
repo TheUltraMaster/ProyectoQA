@@ -1,0 +1,543 @@
+@using BD.Models
+@using Proyecto.DTOS
+@using Proyecto.Services
+@using MudBlazor
+@using System.ComponentModel.DataAnnotations
+@using Proyecto.Mapper
+@inject IEquipoService EquipoService
+@inject ISnackbar Snackbar
+@inject Map Mapper
+
+<MudDialog>
+    <DialogContent>
+        <MudContainer Style="max-width: 800px;">
+            <MudForm @ref="form" @bind-IsValid="@isFormValid">
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="model.Identificador"
+                                     Label="Identificador (opcional)"
+                                     Variant="Variant.Outlined"
+                                     For="@(() => model.Identificador)" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="model.Nombre"
+                                     Label="Nombre del Equipo"
+                                     Variant="Variant.Outlined"
+                                     Required="true"
+                                     RequiredError="El nombre es obligatorio"
+                                     For="@(() => model.Nombre)" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="TipoEquipo" Value="model.Tipo"
+                                  Label="Tipo de Equipo"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="Seleccione un tipo de equipo"
+                                  ValueChanged="@(async (TipoEquipo tipo) => await OnTipoEquipoChanged(tipo))">
+                            @foreach (var tipo in tiposEquipo)
+                            {
+                                <MudSelectItem T="TipoEquipo" Value="@tipo">@tipo.GetDescription().ToUpper()</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int" @bind-Value="model.IdMarca"
+                                  Label="Marca"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="Seleccione una marca">
+                            @foreach (var marca in marcas)
+                            {
+                                <MudSelectItem T="int" Value="@marca.Id">@marca.Nombre</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="model.Color"
+                                     Label="Color"
+                                     Variant="Variant.Outlined"
+                                     Required="true"
+                                     RequiredError="El color es obligatorio"
+                                     For="@(() => model.Color)" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudNumericField @bind-Value="model.Valor"
+                                        Label="Valor"
+                                        Variant="Variant.Outlined"
+                                        Required="true"
+                                        RequiredError="El valor es obligatorio"
+                                        Format="@GetCurrencyFormat(model.Valor)"
+                                        Min="0.01m"
+                                        Adornment="Adornment.Start"
+                                        AdornmentText="Q"
+                                        For="@(() => model.Valor)" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="model.Serie"
+                                     Label="Número de Serie"
+                                     Variant="Variant.Outlined"
+                                     Required="true"
+                                     RequiredError="El número de serie es obligatorio"
+                                     For="@(() => model.Serie)" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="TipoAlimentacion?" @bind-Value="model.TipoAlimentacion"
+                                  Label="Tipo de Alimentación"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="Seleccione un tipo de alimentación">
+                            @foreach (var tipo in tiposAlimentacion)
+                            {
+                                <MudSelectItem T="TipoAlimentacion?" Value="@((TipoAlimentacion?)tipo)">@tipo.GetDescription().ToUpper()</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int?" @bind-Value="model.IdEmpleado"
+                                  Label="Empleado Asignado"
+                                  Variant="Variant.Outlined"
+                                  Clearable="true">
+                            @foreach (var empleado in empleados)
+                            {
+                                <MudSelectItem T="int?" Value="@empleado.Id">@empleado.PrimerNombre @empleado.PrimerApellido</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="EstadoEquipo" @bind-Value="model.Estado"
+                                  Label="Estado"
+                                  Variant="Variant.Outlined">
+                            @foreach (var estado in estadosEquipo)
+                            {
+                                <MudSelectItem T="EstadoEquipo" Value="@estado">@estado.GetDescription().ToUpper()</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="model.Extras"
+                                     Label="Información Adicional"
+                                     Variant="Variant.Outlined"
+                                     Lines="3"
+                                     MaxLength="1000"
+                                     For="@(() => model.Extras)" />
+                    </MudItem>
+
+                    @* Dynamic fields based on equipment type *@
+                    @if (model.Tipo == TipoEquipo.Electronico)
+                    {
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="electronicoModel.Imei"
+                                         Label="IMEI (15 dígitos)"
+                                         Variant="Variant.Outlined"
+                                         MaxLength="15"
+                                         For="@(() => electronicoModel.Imei)" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="electronicoModel.SistemaOperativo"
+                                         Label="Sistema Operativo"
+                                         Variant="Variant.Outlined"
+                                         MaxLength="20"
+                                         For="@(() => electronicoModel.SistemaOperativo)" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudSelect T="Conectividad?" @bind-Value="electronicoModel.Conectividad"
+                                      Label="Conectividad"
+                                      Variant="Variant.Outlined"
+                                      Clearable="true">
+                                @foreach (var conectividad in conectividadOptions)
+                                {
+                                    <MudSelectItem T="Conectividad?" Value="@((Conectividad?)conectividad)">@conectividad.GetDescription().ToUpper()</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudSelect T="Operador?" @bind-Value="electronicoModel.Operador"
+                                      Label="Operador"
+                                      Variant="Variant.Outlined"
+                                      Clearable="true">
+                                @foreach (var operador in operadorOptions)
+                                {
+                                    <MudSelectItem T="Operador?" Value="@((Operador?)operador)">@operador.GetDescription().ToUpper()</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                    }
+                    else if (model.Tipo == TipoEquipo.Vehiculo)
+                    {
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="vehiculoModel.NoMotor"
+                                         Label="Número de Motor"
+                                         Variant="Variant.Outlined"
+                                         Required="true"
+                                         RequiredError="El número de motor es obligatorio"
+                                         MaxLength="20"
+                                         For="@(() => vehiculoModel.NoMotor)" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="vehiculoModel.Vin"
+                                         Label="VIN"
+                                         Variant="Variant.Outlined"
+                                         Required="true"
+                                         RequiredError="El VIN es obligatorio"
+                                         MaxLength="20"
+                                         For="@(() => vehiculoModel.Vin)" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudNumericField @bind-Value="vehiculoModel.Cilindrada"
+                                            Label="Cilindrada (cc)"
+                                            Variant="Variant.Outlined"
+                                            Required="true"
+                                            RequiredError="La cilindrada es obligatoria"
+                                            Min="1"
+                                            For="@(() => vehiculoModel.Cilindrada)" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="vehiculoModel.Placa"
+                                         Label="Placa"
+                                         Variant="Variant.Outlined"
+                                         Required="true"
+                                         RequiredError="La placa es obligatoria"
+                                         MaxLength="10"
+                                         For="@(() => vehiculoModel.Placa)" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudNumericField @bind-Value="vehiculoModel.Modelo"
+                                            Label="Modelo (Año)"
+                                            Variant="Variant.Outlined"
+                                            Required="true"
+                                            RequiredError="El modelo es obligatorio"
+                                            Min="1980"
+                                            Max="@(DateTime.Now.Year + 1)"
+                                            For="@(() => vehiculoModel.Modelo)" />
+                        </MudItem>
+                    }
+                    else if (model.Tipo == TipoEquipo.Mobiliario)
+                    {
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="mobiliarioModel.Material"
+                                         Label="Material"
+                                         Variant="Variant.Outlined"
+                                         Required="true"
+                                         RequiredError="El material es obligatorio"
+                                         MaxLength="50"
+                                         For="@(() => mobiliarioModel.Material)" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudNumericField @bind-Value="mobiliarioModel.Altura"
+                                            Label="Altura (cm)"
+                                            Variant="Variant.Outlined"
+                                            Required="true"
+                                            RequiredError="La altura es obligatoria"
+                                            Min="0.01f"
+                                            Max="999.99f"
+                                            Format="F2"
+                                            For="@(() => mobiliarioModel.Altura)" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudNumericField @bind-Value="mobiliarioModel.Ancho"
+                                            Label="Ancho (cm)"
+                                            Variant="Variant.Outlined"
+                                            Required="true"
+                                            RequiredError="El ancho es obligatorio"
+                                            Min="0.01f"
+                                            Max="999.99f"
+                                            Format="F2"
+                                            For="@(() => mobiliarioModel.Ancho)" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudNumericField @bind-Value="mobiliarioModel.Profundidad"
+                                            Label="Profundidad (cm)"
+                                            Variant="Variant.Outlined"
+                                            Required="true"
+                                            RequiredError="La profundidad es obligatoria"
+                                            Min="0.01f"
+                                            Max="999.99f"
+                                            Format="F2"
+                                            For="@(() => mobiliarioModel.Profundidad)" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudNumericField @bind-Value="mobiliarioModel.CantidadPiezas"
+                                            Label="Cantidad de Piezas"
+                                            Variant="Variant.Outlined"
+                                            Min="1"
+                                            For="@(() => mobiliarioModel.CantidadPiezas)" />
+                        </MudItem>
+                    }
+                    else if (model.Tipo == TipoEquipo.Herramienta)
+                    {
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="herramientaModel.Material"
+                                         Label="Material"
+                                         Variant="Variant.Outlined"
+                                         Required="true"
+                                         RequiredError="El material es obligatorio"
+                                         MaxLength="50"
+                                         For="@(() => herramientaModel.Material)" />
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudForm>
+        </MudContainer>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@(!isFormValid || isSubmitting)">
+            @if (isSubmitting)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                <MudText Class="ms-2">Procesando...</MudText>
+            }
+            else
+            {
+                @(IsEditMode ? "Actualizar" : "Crear")
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] 
+    IMudDialogInstance MudDialog { get; set; }
+
+    [Parameter] 
+    public bool IsEditMode { get; set; } = false;
+
+    [Parameter] 
+    public Equipo? Equipo { get; set; }
+
+    [Parameter]
+    public EquipoDto? EquipoDto { get; set; }
+
+    private MudForm form = default!;
+    private bool isFormValid;
+    private bool isSubmitting;
+    
+    private List<Marca> marcas = new();
+    private List<Empleado> empleados = new();
+    private List<TipoEquipo> tiposEquipo = new();
+    private List<TipoAlimentacion> tiposAlimentacion = new();
+    private List<EstadoEquipo> estadosEquipo = new();
+    private List<Conectividad> conectividadOptions = new();
+    private List<Operador> operadorOptions = new();
+
+    private EquipoDto model = new();
+    
+    // Specialized models for different equipment types
+    private ElectronicoDto electronicoModel = new();
+    private VehiculoDto vehiculoModel = new();
+    private MobiliarioDto mobiliarioModel = new();
+    private HerramientaDto herramientaModel = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+        LoadEnums();
+        
+        if (IsEditMode)
+        {
+            // Use DTO directly if provided, otherwise convert from Entity
+            model = EquipoDto ?? (Equipo != null ? Mapper.toDto(Equipo) : new EquipoDto());
+            
+            // Load specific data for the equipment type
+            await LoadSpecificDataForEdit();
+        }
+        else
+        {
+            model.Estado = EstadoEquipo.Activo;
+            model.Tipo = TipoEquipo.Herramienta;
+        }
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            marcas = await EquipoService.GetMarcasAsync();
+            empleados = await EquipoService.GetEmpleadosAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar datos: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void LoadEnums()
+    {
+        tiposEquipo = Enum.GetValues<TipoEquipo>().ToList();
+        tiposAlimentacion = Enum.GetValues<TipoAlimentacion>().ToList();
+        estadosEquipo = Enum.GetValues<EstadoEquipo>().ToList();
+        conectividadOptions = Enum.GetValues<Conectividad>().ToList();
+        operadorOptions = Enum.GetValues<Operador>().ToList();
+    }
+
+    private async Task LoadSpecificDataForEdit()
+    {
+        try
+        {
+            // Get the equipment ID from DTO or Entity
+            var equipoId = EquipoDto?.Id ?? Equipo?.Id;
+            
+            if (equipoId.HasValue)
+            {
+                var specificData = await EquipoService.GetSpecificDataAsync(equipoId.Value, model.Tipo);
+                
+                // Load specific data based on equipment type
+                switch (model.Tipo)
+                {
+                    case TipoEquipo.Electronico:
+                        electronicoModel = specificData as ElectronicoDto ?? new ElectronicoDto();
+                        break;
+                        
+                    case TipoEquipo.Vehiculo:
+                        vehiculoModel = specificData as VehiculoDto ?? new VehiculoDto();
+                        break;
+                        
+                    case TipoEquipo.Mobiliario:
+                        mobiliarioModel = specificData as MobiliarioDto ?? new MobiliarioDto();
+                        break;
+                        
+                    case TipoEquipo.Herramienta:
+                        herramientaModel = specificData as HerramientaDto ?? new HerramientaDto();
+                        break;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar datos específicos: {ex.Message}", Severity.Warning);
+        }
+    }
+
+    void Cancel()
+    {
+        MudDialog?.Close();
+    }
+
+    private async Task Submit()
+    {
+        if (!isFormValid) return;
+
+        isSubmitting = true;
+        try
+        {
+            // Get ID for validation (prioritize DTO, fallback to Entity)
+            var equipoId = IsEditMode ? (EquipoDto?.Id ?? Equipo?.Id) : null;
+            
+            // Validar identificador único (si se proporciona)
+            if (!string.IsNullOrEmpty(model.Identificador))
+            {
+                var identificadorExists = await EquipoService.IdentificadorExistsAsync(model.Identificador, equipoId);
+                if (identificadorExists)
+                {
+                    Snackbar.Add("El identificador ya está en uso", Severity.Error);
+                    return;
+                }
+            }
+
+            // Validar número de serie único
+            var serieExists = await EquipoService.SerieExistsAsync(model.Serie, equipoId);
+            if (serieExists)
+            {
+                Snackbar.Add("El número de serie ya está en uso", Severity.Error);
+                return;
+            }
+
+            // Get specialized data based on equipment type
+            object? specificData = GetSpecificDataForType(model.Tipo);
+
+            if (IsEditMode)
+            {
+                var updateId = equipoId!.Value;
+                var result = await EquipoService.UpdateEquipoAsync(updateId, model, specificData);
+                
+                if (result != null)
+                {
+                    Snackbar.Add("Equipo actualizado exitosamente", Severity.Success);
+                    MudDialog?.Close(DialogResult.Ok(result));
+                }
+                else
+                {
+                    Snackbar.Add("Error al actualizar el equipo", Severity.Error);
+                }
+            }
+            else
+            {
+                var result = await EquipoService.CreateEquipoAsync(model, specificData);
+                Snackbar.Add($"Equipo creado exitosamente con identificador: {result.Identificador}", Severity.Success);
+                MudDialog?.Close(DialogResult.Ok(result));
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al procesar la solicitud: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task OnTipoEquipoChanged(TipoEquipo newTipo)
+    {
+        model.Tipo = newTipo;
+        
+        if (IsEditMode)
+        {
+            // In edit mode, load specific data for the new type
+            await LoadSpecificDataForEdit();
+        }
+        else
+        {
+            // In create mode, just reset the models
+            ClearSpecializedModels();
+        }
+        
+        StateHasChanged();
+    }
+
+    private void ClearSpecializedModels()
+    {
+        electronicoModel = new ElectronicoDto();
+        vehiculoModel = new VehiculoDto();
+        mobiliarioModel = new MobiliarioDto();
+        herramientaModel = new HerramientaDto();
+    }
+
+    private object? GetSpecificDataForType(TipoEquipo tipo)
+    {
+        return tipo switch
+        {
+            TipoEquipo.Electronico => electronicoModel,
+            TipoEquipo.Vehiculo => vehiculoModel,
+            TipoEquipo.Mobiliario => mobiliarioModel,
+            TipoEquipo.Herramienta => herramientaModel,
+            _ => null
+        };
+    }
+
+    private string GetCurrencyFormat(decimal value)
+    {
+        return value.ToString("N2", new System.Globalization.CultureInfo("en-US")
+        {
+            NumberFormat = new System.Globalization.NumberFormatInfo
+            {
+                NumberDecimalSeparator = ".",
+                NumberGroupSeparator = ",",
+                NumberDecimalDigits = 2
+            }
+        });
+    }
+}

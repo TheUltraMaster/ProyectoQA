@@ -1,4 +1,5 @@
-Minio/
+Minio/data/
+Minio/m*
 */obj/
 */bin/
 */.env
