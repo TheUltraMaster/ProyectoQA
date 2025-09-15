@@ -6,6 +6,7 @@ using Bycript;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication;
 using Minio;
+using Org.BouncyCastle.Utilities;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +23,15 @@ builder.Services.AddRazorComponents()
 
 dotenv.net.DotEnv.Load();
 string db = Environment.GetEnvironmentVariable("db");
+int bucketport = int.Parse(Environment.GetEnvironmentVariable("bucketport"));
+bool bucketssl = bool.Parse(Environment.GetEnvironmentVariable("bucketssl"));
+string bucketurl = Environment.GetEnvironmentVariable("bucketurl");
+string bucketuser = Environment.GetEnvironmentVariable("bucketuser");
+string bucketpassword = Environment.GetEnvironmentVariable("bucketpassword");
+
+
+
+
 
 builder.Services.AddDbContext<ProyectoContext>
 (
@@ -52,8 +62,8 @@ builder.Services.AddAuthorizationBuilder()
 builder.Services.AddScoped<IMinioClient>(provider =>
 {
     return new MinioClient()
-        .WithEndpoint("localhost", 9000)
-        .WithCredentials("minioadmin", "minioadmin")
+        .WithEndpoint(bucketurl,bucketport)
+        .WithCredentials(bucketuser, bucketpassword)
         .Build();
 });
 
@@ -61,7 +71,7 @@ builder.Services.AddScoped<IMinioClient>(provider =>
 builder.Services.AddScoped<Bucket.IMinioService>(provider =>
 {
     var minioClient = provider.GetRequiredService<IMinioClient>();
-    return new Bucket.MinioService(minioClient, "localhost", 9000, false);
+    return new Bucket.MinioService(minioClient, bucketurl, bucketport, bucketssl);
 });
 
 // Registrar servicios
