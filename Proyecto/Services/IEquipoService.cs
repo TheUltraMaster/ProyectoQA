@@ -18,5 +18,11 @@ namespace Proyecto.Services
         Task<List<EquipoDto>> GetEquiposByEmpleadoAsync(int empleadoId);
         Task<bool> CambiarEstadoEquipoAsync(int equipoId, EstadoEquipo nuevoEstado);
         Task<object?> GetSpecificDataAsync(int equipoId, TipoEquipo tipo);
+
+        // Métodos de asignación
+        Task<List<EquipoDto>> GetEquiposAsignadosAsync();
+        Task<List<EquipoDto>> GetEquiposNoAsignadosAsync();
+        Task<bool> AsignarEquiposAsync(List<int> equipoIds, int empleadoId);
+        Task<bool> DesasignarEquiposAsync(List<int> equipoIds);
     }
 }

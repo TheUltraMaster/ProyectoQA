@@ -1,0 +1,304 @@
+@page "/asignaciones"
+@rendermode InteractiveServer
+@using BD.Models
+@using Proyecto.DTOS
+@using Proyecto.Services
+@using Proyecto.Components.Dialogs
+@inject IEquipoService EquipoService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Asignación de Equipos</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge">
+    <MudText Typo="Typo.h4" Class="mb-4">Asignación de Equipos</MudText>
+
+    <MudCard Class="mb-4">
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudSwitch Value="@mostrarAsignados"
+                               Color="Color.Primary"
+                               Label="@(mostrarAsignados ? "Mostrando Equipos Asignados" : "Mostrando Equipos No Asignados")"
+                               T="bool"
+                               ValueChanged="OnModoChanged" />
+                </MudItem>
+                <MudItem xs="12" md="6" Class="d-flex justify-end align-center">
+                    @if (equiposSeleccionados.Any())
+                    {
+                        <MudChip T="string" Color="Color.Info" Icon="@Icons.Material.Filled.CheckCircle">
+                            @equiposSeleccionados.Count equipo(s) seleccionado(s)
+                        </MudChip>
+                    }
+                </MudItem>
+            </MudGrid>
+            <MudGrid Class="mt-3">
+                <MudItem xs="12" Class="d-flex justify-center gap-2">
+                    @if (!mostrarAsignados)
+                    {
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Success"
+                                   StartIcon="@Icons.Material.Filled.Assignment"
+                                   OnClick="AbrirModalAsignar"
+                                   Disabled="@(!equiposSeleccionados.Any())"
+                                   Size="Size.Small">
+                            Asignar Equipos
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Warning"
+                                   StartIcon="@Icons.Material.Filled.RemoveCircle"
+                                   OnClick="AbrirModalDesasignar"
+                                   Disabled="@(!equiposSeleccionados.Any())"
+                                   Size="Size.Small">
+                            Desasignar Equipos
+                        </MudButton>
+                    }
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Secondary"
+                               StartIcon="@Icons.Material.Filled.Clear"
+                               OnClick="LimpiarSeleccion"
+                               Disabled="@(!equiposSeleccionados.Any())"
+                               Size="Size.Small">
+                        Limpiar Selección
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Refresh"
+                               OnClick="CargarEquipos"
+                               Size="Size.Small">
+                        Actualizar
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+
+    @if (isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+
+    <MudCard>
+        <MudCardContent>
+            <MudTable Items="@equipos" Hover="true" Striped="true" Dense="true" Bordered="true">
+                <HeaderContent>
+                    <MudTh>
+                        <MudCheckBox T="bool"
+                                     Value="@todosMarcados"
+                                     ValueChanged="@((bool val) => SeleccionarTodos(val))"
+                                     Color="Color.Primary" />
+                    </MudTh>
+                    <MudTh>Identificador</MudTh>
+                    <MudTh>Nombre</MudTh>
+                    <MudTh>Tipo</MudTh>
+                    <MudTh>Marca</MudTh>
+                    <MudTh>Serie</MudTh>
+                    <MudTh>Estado</MudTh>
+                    @if (mostrarAsignados)
+                    {
+                        <MudTh>Empleado Asignado</MudTh>
+                    }
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>
+                        <MudCheckBox T="bool"
+                                     Value="@equiposSeleccionados.Contains(context.Id.Value)"
+                                     ValueChanged="@((bool val) => ToggleSeleccion(context.Id.Value, val))"
+                                     Color="Color.Primary" />
+                    </MudTd>
+                    <MudTd>@context.Identificador</MudTd>
+                    <MudTd>@context.Nombre</MudTd>
+                    <MudTd>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info">
+                            @context.Tipo.GetDescription().ToUpper()
+                        </MudChip>
+                    </MudTd>
+                    <MudTd>@context.MarcaNombre</MudTd>
+                    <MudTd>@context.Serie</MudTd>
+                    <MudTd>
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@ObtenerColorEstado(context.Estado)">
+                            @context.Estado.GetDescription().ToUpper()
+                        </MudChip>
+                    </MudTd>
+                    @if (mostrarAsignados)
+                    {
+                        <MudTd>@context.EmpleadoNombre</MudTd>
+                    }
+                </RowTemplate>
+                <NoRecordsContent>
+                    <MudText Typo="Typo.body1" Align="Align.Center" Class="py-4">
+                        @if (mostrarAsignados)
+                        {
+                            <text>No hay equipos asignados</text>
+                        }
+                        else
+                        {
+                            <text>No hay equipos sin asignar</text>
+                        }
+                    </MudText>
+                </NoRecordsContent>
+            </MudTable>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
+
+@code {
+    private List<EquipoDto> equipos = new();
+    private HashSet<int> equiposSeleccionados = new();
+    private bool mostrarAsignados = false;
+    private bool isLoading = false;
+    private bool todosMarcados = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarEquipos();
+    }
+
+    private async Task CargarEquipos()
+    {
+        isLoading = true;
+        try
+        {
+            if (mostrarAsignados)
+            {
+                equipos = await EquipoService.GetEquiposAsignadosAsync();
+            }
+            else
+            {
+                equipos = await EquipoService.GetEquiposNoAsignadosAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar equipos: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnModoChanged(bool nuevoValor)
+    {
+        mostrarAsignados = nuevoValor;
+        LimpiarSeleccion();
+        await CargarEquipos();
+    }
+
+    private void ToggleSeleccion(int equipoId, bool seleccionado)
+    {
+        if (seleccionado)
+        {
+            equiposSeleccionados.Add(equipoId);
+        }
+        else
+        {
+            equiposSeleccionados.Remove(equipoId);
+            todosMarcados = false;
+        }
+
+        // Actualizar estado de "todos marcados"
+        todosMarcados = equipos.Count > 0 && equipos.All(e => equiposSeleccionados.Contains(e.Id.Value));
+    }
+
+    private void SeleccionarTodos(bool seleccionar)
+    {
+        todosMarcados = seleccionar;
+        equiposSeleccionados.Clear();
+
+        if (seleccionar)
+        {
+            foreach (var equipo in equipos)
+            {
+                if (equipo.Id.HasValue)
+                {
+                    equiposSeleccionados.Add(equipo.Id.Value);
+                }
+            }
+        }
+    }
+
+    private void LimpiarSeleccion()
+    {
+        equiposSeleccionados.Clear();
+        todosMarcados = false;
+    }
+
+    private async Task AbrirModalAsignar()
+    {
+        if (!equiposSeleccionados.Any())
+        {
+            Snackbar.Add("Debe seleccionar al menos un equipo", Severity.Warning);
+            return;
+        }
+
+        var parameters = new DialogParameters<AsignarEquiposDialog>
+        {
+            { x => x.EquipoIds, equiposSeleccionados.ToList() }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<AsignarEquiposDialog>("Asignar Equipos a Empleado", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await CargarEquipos();
+            LimpiarSeleccion();
+            Snackbar.Add("Equipos asignados correctamente", Severity.Success);
+        }
+    }
+
+    private async Task AbrirModalDesasignar()
+    {
+        if (!equiposSeleccionados.Any())
+        {
+            Snackbar.Add("Debe seleccionar al menos un equipo", Severity.Warning);
+            return;
+        }
+
+        var parameters = new DialogParameters<DesasignarEquiposDialog>
+        {
+            { x => x.EquipoIds, equiposSeleccionados.ToList() }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<DesasignarEquiposDialog>("Desasignar Equipos", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await CargarEquipos();
+            LimpiarSeleccion();
+            Snackbar.Add("Equipos desasignados correctamente", Severity.Success);
+        }
+    }
+
+    private Color ObtenerColorEstado(EstadoEquipo estado)
+    {
+        return estado switch
+        {
+            EstadoEquipo.Activo => Color.Success,
+            EstadoEquipo.Inactivo => Color.Default,
+            EstadoEquipo.Mantenimiento => Color.Warning,
+            EstadoEquipo.Suspendido => Color.Error,
+            _ => Color.Default
+        };
+    }
+}

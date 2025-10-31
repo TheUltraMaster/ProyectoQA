@@ -1,0 +1,70 @@
+@using Proyecto.Services
+@inject IEquipoService EquipoService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6" Class="mb-3">
+            Confirmar Desasignación
+        </MudText>
+
+        <MudText Typo="Typo.body1">
+            ¿Está seguro que desea desasignar @EquipoIds.Count equipo(s)?
+        </MudText>
+
+        <MudAlert Severity="Severity.Warning" Class="mt-3">
+            Esta acción quitará la asignación actual de los equipos seleccionados.
+        </MudAlert>
+
+        @if (isLoading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mt-3" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="isLoading">Cancelar</MudButton>
+        <MudButton Color="Color.Warning"
+                   Variant="Variant.Filled"
+                   OnClick="Desasignar"
+                   Disabled="isLoading">
+            Desasignar
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public List<int> EquipoIds { get; set; } = new();
+
+    private bool isLoading = false;
+
+    private async Task Desasignar()
+    {
+        isLoading = true;
+        try
+        {
+            var success = await EquipoService.DesasignarEquiposAsync(EquipoIds);
+            if (success)
+            {
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add("Error al desasignar equipos", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

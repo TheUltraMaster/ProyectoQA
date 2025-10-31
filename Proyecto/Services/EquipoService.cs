@@ -433,5 +433,57 @@ namespace Proyecto.Services
                     break;
             }
         }
+
+        public async Task<List<EquipoDto>> GetEquiposAsignadosAsync()
+        {
+            return await GetEquiposByFilterAsync(e => e.IdEmpleado != null);
+        }
+
+        public async Task<List<EquipoDto>> GetEquiposNoAsignadosAsync()
+        {
+            return await GetEquiposByFilterAsync(e => e.IdEmpleado == null);
+        }
+
+        public async Task<bool> AsignarEquiposAsync(List<int> equipoIds, int empleadoId)
+        {
+            if (equipoIds == null || !equipoIds.Any())
+                return false;
+
+            var empleado = await _context.Empleados.FindAsync(empleadoId);
+            if (empleado == null)
+                return false;
+
+            var equipos = await _context.Equipos
+                .Where(e => equipoIds.Contains(e.Id))
+                .ToListAsync();
+
+            foreach (var equipo in equipos)
+            {
+                equipo.IdEmpleado = empleadoId;
+                equipo.FechaCommit = DateTime.Now;
+            }
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> DesasignarEquiposAsync(List<int> equipoIds)
+        {
+            if (equipoIds == null || !equipoIds.Any())
+                return false;
+
+            var equipos = await _context.Equipos
+                .Where(e => equipoIds.Contains(e.Id))
+                .ToListAsync();
+
+            foreach (var equipo in equipos)
+            {
+                equipo.IdEmpleado = null;
+                equipo.FechaCommit = DateTime.Now;
+            }
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
     }
 }

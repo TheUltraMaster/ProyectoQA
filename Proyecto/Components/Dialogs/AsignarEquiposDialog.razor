@@ -1,0 +1,97 @@
+@using BD.Models
+@using Proyecto.Services
+@inject IEquipoService EquipoService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6" Class="mb-3">
+            Asignar @EquipoIds.Count equipo(s) a un empleado
+        </MudText>
+
+        <MudSelect T="int?"
+                   @bind-Value="empleadoSeleccionado"
+                   Label="Seleccione un empleado"
+                   Variant="Variant.Outlined"
+                   Required="true"
+                   Disabled="isLoading">
+            @foreach (var empleado in empleados)
+            {
+                <MudSelectItem Value="@((int?)empleado.Id)">
+                    @empleado.PrimerNombre @empleado.SegundoNombre @empleado.PrimerApellido @empleado.SegundoApellido
+                </MudSelectItem>
+            }
+        </MudSelect>
+
+        @if (isLoading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mt-3" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="isLoading">Cancelar</MudButton>
+        <MudButton Color="Color.Success"
+                   Variant="Variant.Filled"
+                   OnClick="Asignar"
+                   Disabled="@(!empleadoSeleccionado.HasValue || isLoading)">
+            Asignar
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public List<int> EquipoIds { get; set; } = new();
+
+    private List<Empleado> empleados = new();
+    private int? empleadoSeleccionado;
+    private bool isLoading = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            empleados = await EquipoService.GetEmpleadosAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar empleados: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task Asignar()
+    {
+        if (!empleadoSeleccionado.HasValue)
+        {
+            Snackbar.Add("Debe seleccionar un empleado", Severity.Warning);
+            return;
+        }
+
+        isLoading = true;
+        try
+        {
+            var success = await EquipoService.AsignarEquiposAsync(EquipoIds, empleadoSeleccionado.Value);
+            if (success)
+            {
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add("Error al asignar equipos", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

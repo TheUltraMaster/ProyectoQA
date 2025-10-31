@@ -71,7 +71,8 @@
                                         Variant="Variant.Outlined"
                                         Required="true"
                                         RequiredError="El valor es obligatorio"
-                                        Format="@GetCurrencyFormat(model.Valor)"
+                                        Format="N2"
+                                        Culture="@System.Globalization.CultureInfo.InvariantCulture"
                                         Min="0.01m"
                                         Adornment="Adornment.Start"
                                         AdornmentText="Q"
@@ -526,18 +527,5 @@
             TipoEquipo.Herramienta => herramientaModel,
             _ => null
         };
-    }
-
-    private string GetCurrencyFormat(decimal value)
-    {
-        return value.ToString("N2", new System.Globalization.CultureInfo("en-US")
-        {
-            NumberFormat = new System.Globalization.NumberFormatInfo
-            {
-                NumberDecimalSeparator = ".",
-                NumberGroupSeparator = ",",
-                NumberDecimalDigits = 2
-            }
-        });
     }
 }
