@@ -83,7 +83,25 @@
 
     <MudCard>
         <MudCardContent>
-            <MudTable Items="@equipos" Hover="true" Striped="true" Dense="true" Bordered="true">
+            <MudTextField @bind-Value="searchString"
+                          Placeholder="Buscar por nombre de equipo..."
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          IconSize="Size.Medium"
+                          Class="mb-3"
+                          Clearable="true"
+                          Immediate="true"
+                          DebounceInterval="300"
+                          OnDebounceIntervalElapsed="FiltrarEquipos" />
+
+            <MudTable @ref="mudTable"
+                      Items="@equiposFiltrados"
+                      Hover="true"
+                      Striped="true"
+                      Dense="true"
+                      Bordered="true"
+                      Loading="@isLoading"
+                      LoadingProgressColor="Color.Primary">
                 <HeaderContent>
                     <MudTh>
                         <MudCheckBox T="bool"
@@ -131,27 +149,43 @@
                 </RowTemplate>
                 <NoRecordsContent>
                     <MudText Typo="Typo.body1" Align="Align.Center" Class="py-4">
-                        @if (mostrarAsignados)
+                        @if (string.IsNullOrWhiteSpace(searchString))
                         {
-                            <text>No hay equipos asignados</text>
+                            @if (mostrarAsignados)
+                            {
+                                <text>No hay equipos asignados</text>
+                            }
+                            else
+                            {
+                                <text>No hay equipos sin asignar</text>
+                            }
                         }
                         else
                         {
-                            <text>No hay equipos sin asignar</text>
+                            <text>No se encontraron equipos que coincidan con la búsqueda</text>
                         }
                     </MudText>
                 </NoRecordsContent>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }"
+                                   InfoFormat="@($"Mostrando {infoFormat}")"
+                                   RowsPerPageString="Equipos por página:" />
+                </PagerContent>
             </MudTable>
         </MudCardContent>
     </MudCard>
 </MudContainer>
 
 @code {
+    private MudTable<EquipoDto>? mudTable;
     private List<EquipoDto> equipos = new();
+    private IEnumerable<EquipoDto> equiposFiltrados = new List<EquipoDto>();
     private HashSet<int> equiposSeleccionados = new();
     private bool mostrarAsignados = false;
     private bool isLoading = false;
     private bool todosMarcados = false;
+    private string searchString = "";
+    private string infoFormat = "{first_item}-{last_item} de {all_items}";
 
     protected override async Task OnInitializedAsync()
     {
@@ -171,6 +205,8 @@
             {
                 equipos = await EquipoService.GetEquiposNoAsignadosAsync();
             }
+
+            FiltrarEquipos();
         }
         catch (Exception ex)
         {
@@ -180,6 +216,24 @@
         {
             isLoading = false;
         }
+    }
+
+    private void FiltrarEquipos()
+    {
+        if (string.IsNullOrWhiteSpace(searchString))
+        {
+            equiposFiltrados = equipos;
+        }
+        else
+        {
+            equiposFiltrados = equipos.Where(e =>
+                !string.IsNullOrEmpty(e.Nombre) &&
+                e.Nombre.Contains(searchString, StringComparison.OrdinalIgnoreCase)
+            ).ToList();
+        }
+
+        // Actualizar el checkbox de "todos marcados" al filtrar
+        todosMarcados = equiposFiltrados.Any() && equiposFiltrados.All(e => e.Id.HasValue && equiposSeleccionados.Contains(e.Id.Value));
     }
 
     private async Task OnModoChanged(bool nuevoValor)
@@ -201,22 +255,33 @@
             todosMarcados = false;
         }
 
-        // Actualizar estado de "todos marcados"
-        todosMarcados = equipos.Count > 0 && equipos.All(e => equiposSeleccionados.Contains(e.Id.Value));
+        // Actualizar estado de "todos marcados" basado en equipos filtrados
+        todosMarcados = equiposFiltrados.Any() && equiposFiltrados.All(e => e.Id.HasValue && equiposSeleccionados.Contains(e.Id.Value));
     }
 
     private void SeleccionarTodos(bool seleccionar)
     {
         todosMarcados = seleccionar;
-        equiposSeleccionados.Clear();
 
         if (seleccionar)
         {
-            foreach (var equipo in equipos)
+            // Seleccionar solo los equipos filtrados visibles
+            foreach (var equipo in equiposFiltrados)
             {
                 if (equipo.Id.HasValue)
                 {
                     equiposSeleccionados.Add(equipo.Id.Value);
+                }
+            }
+        }
+        else
+        {
+            // Deseleccionar solo los equipos filtrados visibles
+            foreach (var equipo in equiposFiltrados)
+            {
+                if (equipo.Id.HasValue)
+                {
+                    equiposSeleccionados.Remove(equipo.Id.Value);
                 }
             }
         }

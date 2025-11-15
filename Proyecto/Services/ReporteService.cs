@@ -29,7 +29,7 @@ public class ReporteService : IReporteService
         return reportes.Select(r => MapReporteToDto(r)).ToList();
     }
 
-    public async Task<(List<ReporteDto> reportes, int totalCount)> GetReportesPaginatedAsync(int page, int pageSize, string? searchEmpleado = null, string? searchEquipo = null)
+    public async Task<(List<ReporteDto> reportes, int totalCount)> GetReportesPaginatedAsync(int page, int pageSize, string? searchEmpleado = null, string? searchIdentificador = null)
     {
         var query = _context.Reportes
             .Include(r => r.IdCausaNavigation)
@@ -40,14 +40,13 @@ public class ReporteService : IReporteService
 
         if (!string.IsNullOrWhiteSpace(searchEmpleado))
         {
-            query = query.Where(r => r.IdEmpleadoNavigation.PrimerNombre.Contains(searchEmpleado) || 
+            query = query.Where(r => r.IdEmpleadoNavigation.PrimerNombre.Contains(searchEmpleado) ||
                                    r.IdEmpleadoNavigation.PrimerApellido.Contains(searchEmpleado));
         }
 
-        if (!string.IsNullOrWhiteSpace(searchEquipo))
+        if (!string.IsNullOrWhiteSpace(searchIdentificador))
         {
-            query = query.Where(r => r.IdEquipoNavigation.Identificador.Contains(searchEquipo) || 
-                                   r.IdEquipoNavigation.Nombre.Contains(searchEquipo));
+            query = query.Where(r => r.IdEquipoNavigation.Identificador.Contains(searchIdentificador));
         }
 
         var totalCount = await query.CountAsync();
@@ -267,9 +266,10 @@ public class ReporteService : IReporteService
             IdCausa = reporte.IdCausa,
             IdEquipo = reporte.IdEquipo,
             IdEmpleado = reporte.IdEmpleado,
-            NombreEmpleado = reporte.IdEmpleadoNavigation != null ? 
+            NombreEmpleado = reporte.IdEmpleadoNavigation != null ?
                 $"{reporte.IdEmpleadoNavigation.PrimerNombre} {reporte.IdEmpleadoNavigation.PrimerApellido}" : null,
             NombreEquipo = reporte.IdEquipoNavigation?.Nombre,
+            IdentificadorEquipo = reporte.IdEquipoNavigation?.Identificador,
             NombreCausa = reporte.IdCausaNavigation?.Nombre
         };
     }

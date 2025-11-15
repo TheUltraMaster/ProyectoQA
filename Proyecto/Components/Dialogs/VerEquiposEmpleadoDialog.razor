@@ -1,0 +1,216 @@
+@using BD.Models
+@using Proyecto.DTOS
+@using Proyecto.Services
+@inject IEquipoService EquipoService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Devices" Class="mr-2" />
+            Equipos Asignados a @EmpleadoNombre
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (isLoading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        }
+        else if (!equipos.Any())
+        {
+            <MudAlert Severity="Severity.Info">
+                Este empleado no tiene equipos asignados.
+            </MudAlert>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Class="mb-3">
+                Seleccione los equipos que desea desasignar
+            </MudText>
+
+            @if (equiposSeleccionados.Any())
+            {
+                <MudChip T="string" Color="Color.Info" Icon="@Icons.Material.Filled.CheckCircle" Class="mb-3">
+                    @equiposSeleccionados.Count equipo(s) seleccionado(s)
+                </MudChip>
+            }
+
+            <MudTable Items="@equipos"
+                      Hover="true"
+                      Striped="true"
+                      Dense="true"
+                      Bordered="true">
+                <HeaderContent>
+                    <MudTh>
+                        <MudCheckBox T="bool"
+                                     Value="@todosMarcados"
+                                     ValueChanged="@((bool val) => SeleccionarTodos(val))"
+                                     Color="Color.Primary" />
+                    </MudTh>
+                    <MudTh>Identificador</MudTh>
+                    <MudTh>Nombre</MudTh>
+                    <MudTh>Tipo</MudTh>
+                    <MudTh>Estado</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>
+                        <MudCheckBox T="bool"
+                                     Value="@equiposSeleccionados.Contains(context.Id.Value)"
+                                     ValueChanged="@((bool val) => ToggleSeleccion(context.Id.Value, val))"
+                                     Color="Color.Primary" />
+                    </MudTd>
+                    <MudTd>@context.Identificador</MudTd>
+                    <MudTd>@context.Nombre</MudTd>
+                    <MudTd>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info">
+                            @context.Tipo.GetDescription().ToUpper()
+                        </MudChip>
+                    </MudTd>
+                    <MudTd>
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@ObtenerColorEstado(context.Estado)">
+                            @context.Estado.GetDescription().ToUpper()
+                        </MudChip>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cerrar">Cerrar</MudButton>
+        @if (equipos.Any())
+        {
+            <MudButton Color="Color.Warning"
+                       Variant="Variant.Filled"
+                       OnClick="AbrirModalDesasignar"
+                       Disabled="@(!equiposSeleccionados.Any())"
+                       StartIcon="@Icons.Material.Filled.RemoveCircle">
+                Desasignar Seleccionados
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public int EmpleadoId { get; set; }
+
+    [Parameter]
+    public string EmpleadoNombre { get; set; } = string.Empty;
+
+    private List<EquipoDto> equipos = new();
+    private HashSet<int> equiposSeleccionados = new();
+    private bool isLoading = true;
+    private bool todosMarcados = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarEquipos();
+    }
+
+    private async Task CargarEquipos()
+    {
+        isLoading = true;
+        try
+        {
+            equipos = await EquipoService.GetEquiposByEmpleadoAsync(EmpleadoId);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar equipos: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ToggleSeleccion(int equipoId, bool seleccionado)
+    {
+        if (seleccionado)
+        {
+            equiposSeleccionados.Add(equipoId);
+        }
+        else
+        {
+            equiposSeleccionados.Remove(equipoId);
+            todosMarcados = false;
+        }
+
+        todosMarcados = equipos.Any() && equipos.All(e => e.Id.HasValue && equiposSeleccionados.Contains(e.Id.Value));
+    }
+
+    private void SeleccionarTodos(bool seleccionar)
+    {
+        todosMarcados = seleccionar;
+
+        if (seleccionar)
+        {
+            foreach (var equipo in equipos)
+            {
+                if (equipo.Id.HasValue)
+                {
+                    equiposSeleccionados.Add(equipo.Id.Value);
+                }
+            }
+        }
+        else
+        {
+            equiposSeleccionados.Clear();
+        }
+    }
+
+    private async Task AbrirModalDesasignar()
+    {
+        if (!equiposSeleccionados.Any())
+        {
+            Snackbar.Add("Debe seleccionar al menos un equipo", Severity.Warning);
+            return;
+        }
+
+        var parameters = new DialogParameters<DesasignarEquiposDialog>
+        {
+            { x => x.EquipoIds, equiposSeleccionados.ToList() }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<DesasignarEquiposDialog>("Desasignar Equipos", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            // Recargar equipos después de desasignar
+            equiposSeleccionados.Clear();
+            todosMarcados = false;
+            await CargarEquipos();
+            Snackbar.Add("Equipos desasignados correctamente", Severity.Success);
+
+            // Notificar al componente padre que hubo cambios
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+    }
+
+    private Color ObtenerColorEstado(EstadoEquipo estado)
+    {
+        return estado switch
+        {
+            EstadoEquipo.Activo => Color.Success,
+            EstadoEquipo.Inactivo => Color.Default,
+            EstadoEquipo.Mantenimiento => Color.Warning,
+            EstadoEquipo.Suspendido => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private void Cerrar() => MudDialog.Cancel();
+}

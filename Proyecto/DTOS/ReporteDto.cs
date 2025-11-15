@@ -24,5 +24,6 @@ public class ReporteDto
 
     public string? NombreEmpleado { get; set; }
     public string? NombreEquipo { get; set; }
+    public string? IdentificadorEquipo { get; set; }
     public string? NombreCausa { get; set; }
 }

@@ -9,19 +9,23 @@
             Asignar @EquipoIds.Count equipo(s) a un empleado
         </MudText>
 
-        <MudSelect T="int?"
-                   @bind-Value="empleadoSeleccionado"
-                   Label="Seleccione un empleado"
-                   Variant="Variant.Outlined"
-                   Required="true"
-                   Disabled="isLoading">
-            @foreach (var empleado in empleados)
-            {
-                <MudSelectItem Value="@((int?)empleado.Id)">
-                    @empleado.PrimerNombre @empleado.SegundoNombre @empleado.PrimerApellido @empleado.SegundoApellido
-                </MudSelectItem>
-            }
-        </MudSelect>
+        <MudAutocomplete T="Empleado"
+                         @bind-Value="empleadoSeleccionadoObj"
+                         SearchFunc="BuscarEmpleado"
+                         Label="Buscar empleado por nombre, apellido o ID"
+                         Variant="Variant.Outlined"
+                         Required="true"
+                         Disabled="isLoading"
+                         ToStringFunc="@(e => e == null ? "" : $"{e.PrimerNombre} {e.SegundoNombre} {e.PrimerApellido} {e.SegundoApellido}".Trim())"
+                         ResetValueOnEmptyText="true"
+                         CoerceText="false"
+                         Clearable="true">
+            <ItemTemplate Context="empleado">
+                <MudText>
+                    <b>ID:</b> @empleado.Id - @empleado.PrimerNombre @empleado.SegundoNombre @empleado.PrimerApellido @empleado.SegundoApellido
+                </MudText>
+            </ItemTemplate>
+        </MudAutocomplete>
 
         @if (isLoading)
         {
@@ -33,7 +37,7 @@
         <MudButton Color="Color.Success"
                    Variant="Variant.Filled"
                    OnClick="Asignar"
-                   Disabled="@(!empleadoSeleccionado.HasValue || isLoading)">
+                   Disabled="@(empleadoSeleccionadoObj == null || isLoading)">
             Asignar
         </MudButton>
     </DialogActions>
@@ -47,7 +51,7 @@
     public List<int> EquipoIds { get; set; } = new();
 
     private List<Empleado> empleados = new();
-    private int? empleadoSeleccionado;
+    private Empleado? empleadoSeleccionadoObj;
     private bool isLoading = false;
 
     protected override async Task OnInitializedAsync()
@@ -62,9 +66,45 @@
         }
     }
 
+    private async Task<IEnumerable<Empleado>> BuscarEmpleado(string searchString, CancellationToken cancellationToken)
+    {
+        await Task.Yield(); // Para evitar warnings de async
+
+        if (string.IsNullOrWhiteSpace(searchString))
+            return empleados;
+
+        return empleados.Where(e =>
+        {
+            // Búsqueda por ID
+            if (e.Id.ToString().Contains(searchString, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            // Búsqueda por nombre
+            if (!string.IsNullOrEmpty(e.PrimerNombre) && e.PrimerNombre.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (!string.IsNullOrEmpty(e.SegundoNombre) && e.SegundoNombre.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            // Búsqueda por apellido
+            if (!string.IsNullOrEmpty(e.PrimerApellido) && e.PrimerApellido.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (!string.IsNullOrEmpty(e.SegundoApellido) && e.SegundoApellido.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            // Búsqueda por nombre completo
+            var nombreCompleto = $"{e.PrimerNombre} {e.SegundoNombre} {e.PrimerApellido} {e.SegundoApellido}".Trim();
+            if (nombreCompleto.Contains(searchString, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            return false;
+        }).ToList();
+    }
+
     private async Task Asignar()
     {
-        if (!empleadoSeleccionado.HasValue)
+        if (empleadoSeleccionadoObj == null)
         {
             Snackbar.Add("Debe seleccionar un empleado", Severity.Warning);
             return;
@@ -73,7 +113,7 @@
         isLoading = true;
         try
         {
-            var success = await EquipoService.AsignarEquiposAsync(EquipoIds, empleadoSeleccionado.Value);
+            var success = await EquipoService.AsignarEquiposAsync(EquipoIds, empleadoSeleccionadoObj.Id);
             if (success)
             {
                 MudDialog.Close(DialogResult.Ok(true));

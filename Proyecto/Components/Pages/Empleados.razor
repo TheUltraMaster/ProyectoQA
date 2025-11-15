@@ -6,6 +6,7 @@
 @using Proyecto.Components.Dialogs
 @using System.ComponentModel.DataAnnotations
 @inject IEmpleadoService EmpleadoService
+@inject IEquipoService EquipoService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 
@@ -126,12 +127,20 @@
                             </MudChip>
                         </MudTd>
                         <MudTd DataLabel="Acciones">
-                            <MudButton Color="Color.Primary" 
+                            <MudButton Color="Color.Primary"
                                        StartIcon="Icons.Material.Filled.Edit"
                                        OnClick="() => OpenEditEmpleadoDialog(context)"
                                        Size="Size.Small"
-                                       Variant="Variant.Outlined">
+                                       Variant="Variant.Outlined"
+                                       Class="mr-2">
                                 Editar
+                            </MudButton>
+                            <MudButton Color="Color.Info"
+                                       StartIcon="Icons.Material.Filled.Devices"
+                                       OnClick="() => OpenVerEquiposDialog(context)"
+                                       Size="Size.Small"
+                                       Variant="Variant.Outlined">
+                                Equipos
                             </MudButton>
                         </MudTd>
                     </RowTemplate>
@@ -281,6 +290,35 @@
         if (!result.Canceled)
         {
             await RefreshCurrentView();
+        }
+    }
+
+    // Ver Equipos del Empleado
+    private async Task OpenVerEquiposDialog(Empleado empleado)
+    {
+        var nombreCompleto = $"{empleado.PrimerNombre} {empleado.SegundoNombre} {empleado.PrimerApellido} {empleado.SegundoApellido}".Trim();
+
+        var parameters = new DialogParameters<VerEquiposEmpleadoDialog>
+        {
+            { x => x.EmpleadoId, empleado.Id },
+            { x => x.EmpleadoNombre, nombreCompleto }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<VerEquiposEmpleadoDialog>("Equipos Asignados", parameters, options);
+        var result = await dialog.Result;
+
+        // Si se realizaron cambios (desasignación), refrescar la vista si es necesario
+        if (!result.Canceled)
+        {
+            // Opcionalmente, se puede refrescar la vista aquí
+            // await RefreshCurrentView();
         }
     }
 

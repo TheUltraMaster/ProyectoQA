@@ -6,7 +6,7 @@ namespace Proyecto.Services;
 public interface IReporteService
 {
     Task<List<ReporteDto>> GetAllReportesAsync();
-    Task<(List<ReporteDto> reportes, int totalCount)> GetReportesPaginatedAsync(int page, int pageSize, string? searchEmpleado = null, string? searchEquipo = null);
+    Task<(List<ReporteDto> reportes, int totalCount)> GetReportesPaginatedAsync(int page, int pageSize, string? searchEmpleado = null, string? searchIdentificador = null);
     Task<ReporteDto?> GetReporteByIdAsync(int id);
     Task<ReporteDto> CreateReporteAsync(ReporteDto reporteDto);
     Task<ReporteDto> UpdateReporteAsync(ReporteDto reporteDto);
